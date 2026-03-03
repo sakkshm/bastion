@@ -29,7 +29,7 @@ Orbin is self-contained, lightweight, and designed to plug into AI workflows sea
 * Comes pre-installed with Python, Node.js, git, build tools, data libraries, ffmpeg, and other common utilities.
 * Ideal for running AI agents safely without affecting the host system.
 
-### Bare-Metal (Optional)
+### Bare-Metal
 
 * Runs directly on your machine.
 * Full access to system files and installed tools.
@@ -63,7 +63,7 @@ orbin run --host 0.0.0.0 --port 8000 --api-key your-key
 
 > Caution: Bare-metal mode runs commands with your user permissions. Use Docker for safer execution.
 
-## 🔌 Integrating With AI Agents
+## Integrating With AI Agents
 
 Orbin is designed to be API-first. AI agents can:
 
