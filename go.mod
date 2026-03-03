@@ -1,3 +1,3 @@
-module github.com/sakkshm/orbin
+module github.com/sakkshm/bastion
 
 go 1.25.4

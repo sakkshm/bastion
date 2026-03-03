@@ -1,4 +1,4 @@
-# Orbin Roadmap
+# Bastion Roadmap
 
 ### Goal:
 
@@ -12,9 +12,9 @@ Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with 
 * Set up project structure:
 
 ```
-orbin/
+bastion/
 ├── cmd/
-│   └── orbin/
+│   └── bastion/
 │       └── main.go        # CLI entrypoint
 ├── internal/
 │   ├── api/               # REST + WebSocket endpoints
@@ -183,7 +183,7 @@ type Policy struct {
 
 * CLI flags (Cobra)
 * Environment variables
-* Config files (`~/.config/orbin/config.toml`)
+* Config files (`~/.config/bastion/config.toml`)
 * Docker deployment
 * Pip / uvx analog: `go build` or `go install`
 
