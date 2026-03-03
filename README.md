@@ -1,12 +1,12 @@
-# Bation
+# Bastion
 
 **A self-hosted, safe terminal environment for AI agents and automation tools.**
 
 Run commands, manage files, and execute code in a controlled sandboxed environment **without risking your host machine**, accessible via a simple REST + WebSocket API.
 
-## Why Bation?
+## Why Bastion?
 
-AI models can write scripts and automate workflows, but running them directly on your system is risky. Bation solves this by providing:
+AI models can write scripts and automate workflows, but running them directly on your system is risky. Bastion solves this by providing:
 
 * **Sandboxed execution** — containers isolate AI processes from your host.
 * **Policy enforcement** — define allowed commands, file access, and network usage.
@@ -15,7 +15,7 @@ AI models can write scripts and automate workflows, but running them directly on
 * **Scoped file management** — safely upload, download, and organize files.
 * **Audit logging** — keep detailed execution history for debugging and reproducibility.
 
-Bation is self-contained, lightweight, and designed to plug into AI workflows seamlessly.
+Bastion is self-contained, lightweight, and designed to plug into AI workflows seamlessly.
 
 ## How It Runs
 
@@ -38,32 +38,32 @@ Bation is self-contained, lightweight, and designed to plug into AI workflows se
 ### Docker (Recommended)
 
 ```bash
-docker run -d --name bation \
+docker run -d --name bastion \
   -p 8000:8000 \
-  -v bation-workspace:/workspace \
-  -e BATION_API_KEY=your-key \
-  bation/runtime
+  -v bastion-workspace:/workspace \
+  -e BASTION_API_KEY=your-key \
+  bastion/runtime
 ```
 
 Visit `http://localhost:8000`, your terminal is ready.
 
-> Tip: If you don’t provide an API key, Bation generates one automatically. Retrieve it with `docker logs bation`.
+> Tip: If you don’t provide an API key, Bastion generates one automatically. Retrieve it with `docker logs bastion`.
 
 ### Bare-Metal
 
 ```bash
-bation run --host 0.0.0.0 --port 8000 --api-key your-key
+bastion run --host 0.0.0.0 --port 8000 --api-key your-key
 ```
 
 > Caution: Bare-metal mode runs commands with your user permissions. Use Docker for safer execution.
 
 ## Integrating With AI Agents
 
-Bation is designed to be API-first. AI agents can:
+Bastion is designed to be API-first. AI agents can:
 
 * Run commands via `POST /execute`
 * Stream output over `/ws/{session_id}`
 * Upload/download files in `/workspace`
 * Validate commands before execution with the policy simulation endpoint
 
-Integration can be **direct** (AI talks to your Bation instance) or **proxied** (through a central server for multi-user setups).
+Integration can be **direct** (AI talks to your Bastion instance) or **proxied** (through a central server for multi-user setups).
