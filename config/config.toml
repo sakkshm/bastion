@@ -1,0 +1,30 @@
+########################################
+# Bastion v0 Configuration
+########################################
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[execution]
+mode = "sandbox"                    
+max_concurrent_sessions = 10
+session_ttl_minutes = 30
+working_directory_base = "./sessions"
+
+[bare_metal]
+enabled = false
+allowed_commands = ["ls", "cat", "echo"]
+
+[sandbox]
+enabled = true
+image = "bastion/sandbox:latest"
+network_enabled = false
+memory = "512m"
+cpus = "0.5"
+pids = 128
+
+[logging]
+level = "info"
+format = "text"    
+file = "./logs.json"

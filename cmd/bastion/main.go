@@ -1,0 +1,91 @@
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/sakkshm/bastion/internal/config"
+	"github.com/sakkshm/bastion/internal/logger"
+)
+
+func main() {
+
+	var configPath string
+	flag.StringVar(&configPath, "config", "config/config.toml", "Config TOML file")
+	flag.Parse()
+
+	//  Load Config 
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
+	//  Initialize Logger 
+	log, err := logger.New(
+		cfg.Logging.Level,
+		cfg.Logging.Format,
+		cfg.Logging.File,
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		os.Exit(1)
+	}
+
+	log.Info(
+		"Starting Bastion server",
+		"host", cfg.Server.Host,
+		"port", cfg.Server.Port,
+	)
+
+	//  Router 
+	r := chi.NewRouter()
+
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	port := fmt.Sprintf(":%d", cfg.Server.Port)
+
+	srv := &http.Server{
+		Addr:         port,
+		Handler:      r,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	//  Start Server 
+	go func() {
+		log.Info("Server is now listening", "address", port)
+
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("Server crashed unexpectedly", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	//  Graceful Shutdown 
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	sig := <-quit
+	log.Info("Shutdown signal received", "signal", sig.String())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Error("Graceful shutdown failed", "error", err)
+	} else {
+		log.Info("Server stopped gracefully")
+	}
+}
