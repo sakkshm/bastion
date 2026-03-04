@@ -9,32 +9,10 @@ Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with 
 
 **Tasks:**
 
-* Set up project structure:
-
-```
-bastion/
-├── cmd/
-│   └── bastion/
-│       └── main.go        # CLI entrypoint
-├── internal/
-│   ├── api/               # REST + WebSocket endpoints
-│   ├── execution/         # Command execution logic
-│   ├── sandbox/           # Docker / Bare-metal isolation
-│   ├── policy/            # TOML policy parsing & validation
-│   ├── logging/           # Structured JSON logs
-│   └── auth/              # API key & role-based access
-├── config/
-├── tests/
-├── Dockerfile
-├── go.mod
-├── go.sum
-└── README.md
-```
-
-* Choose web framework: **Fiber**, **Chi**, or **Gin** (REST + WebSocket support)
-* Choose TOML parser: `BurntSushi/toml`
-* Logging: `zap` or `logrus` (structured JSON)
-* CLI: `spf13/cobra` or `urfave/cli`
+* ~~Set up project structure~~
+* ~~Choose web framework: **Chi**~~
+* ~~Choose TOML parser~~
+* ~~Logging (structured JSON)~~
 
 ## Phase 1: Core Execution Engine
 
