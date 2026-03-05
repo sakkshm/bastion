@@ -24,7 +24,7 @@ func (h *SimpleHandler) Enabled(_ context.Context, l slog.Level) bool {
 }
 
 func (h *SimpleHandler) Handle(_ context.Context, r slog.Record) error {
-	if !h.Enabled(nil, r.Level) {
+	if !h.Enabled(context.TODO(), r.Level) {
 		return nil
 	}
 

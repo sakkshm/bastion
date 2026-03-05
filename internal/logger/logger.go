@@ -8,7 +8,7 @@ import (
 
 func New(level string, format string, filePath string) (*slog.Logger, error) {
 
-	//  Parse Log Level 
+	//  Parse Log Level
 	var slogLevel slog.Level
 	switch level {
 	case "debug":
@@ -23,16 +23,16 @@ func New(level string, format string, filePath string) (*slog.Logger, error) {
 		slogLevel = slog.LevelInfo
 	}
 
-	//  Open Log File 
+	//  Open Log File
 	logFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
 
-	//  Multi Writer (Console + File) 
+	//  Multi Writer (Console + File)
 	multiWriter := io.MultiWriter(os.Stdout, logFile)
 
-	//  Select Format 
+	//  Select Format
 	var handler slog.Handler
 
 	if format == "json" {
