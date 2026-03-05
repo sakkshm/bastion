@@ -5,7 +5,7 @@
 Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with sandboxed execution, resource governance, and auditability.
 
 
-## Phase 0: Project Setup
+## ~~Phase 0: Project Setup~~
 
 **Tasks:**
 
@@ -20,7 +20,13 @@ Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with 
 
 **Features:**
 
-* REST API: `/execute`
+* REST API:
+    - ~~CreateSessionEndpoint  = "/session/create"~~
+    - ~~GetSessionStatusEndpoint  = "/session/{id}/status"~~
+    - ~~StartSessionEndpoint  = "/session/{id}/start"~~
+	- SessionExecuteEndpoint = "/session/{id}/exec"
+	- GetSessionLogsEndpoint = "/session/{id}/logs"
+	- DeleteSessionEndpoint  = "/session/{id}"
 * WebSocket endpoint for streaming stdout/stderr
 * Docker sandbox (default)
 * Bare-metal mode (optional)
