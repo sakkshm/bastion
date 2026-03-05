@@ -18,10 +18,10 @@ allowed_commands = ["ls", "cat", "echo"]
 
 [sandbox]
 enabled = true
-image = "bastion/sandbox:latest"
+image = "alpine:3.14"
 network_enabled = false
-memory = "512m"
-cpus = "0.5"
+memory_mbs = 512
+cpus = 0.5
 pids = 128
 
 [logging]
