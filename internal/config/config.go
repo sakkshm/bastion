@@ -26,18 +26,18 @@ type BareMetalConfig struct {
 }
 
 type SandboxConfig struct {
-	Enabled        bool   `toml:"enabled"`
-	Image          string `toml:"image"`
-	NetworkEnabled bool   `toml:"network_enabled"`
-	Memory         string `toml:"memory"`
-	CPUs           string `toml:"cpus"`
-	PIDs           int    `toml:"pids"`
+	Enabled        bool    `toml:"enabled"`
+	Image          string  `toml:"image"`
+	NetworkEnabled bool    `toml:"network_enabled"`
+	Memory         int     `toml:"memory_mbs"`
+	CPUs           float32 `toml:"cpus"`
+	PIDs           int     `toml:"pids"`
 }
 
 type LoggingConfig struct {
-	Level string `toml:"level"` // debug | info | warn | error
+	Level  string `toml:"level"`  // debug | info | warn | error
 	Format string `toml:"format"` // json | text
-	File string `toml:"file"`
+	File   string `toml:"file"`
 }
 
 func (c *Config) applyDefaults() {

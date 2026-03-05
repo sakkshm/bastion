@@ -8,12 +8,12 @@ import (
 
 func (c *Config) Validate() error {
 
-	//  Server 
+	//  Server
 	if c.Server.Port <= 0 || c.Server.Port > 65535 {
 		return errors.New("server.port must be between 1 and 65535")
 	}
 
-	//  Execution Mode 
+	//  Execution Mode
 	if c.Execution.Mode != "sandbox" && c.Execution.Mode != "bare_metal" {
 		return errors.New("execution.mode must be 'sandbox' or 'bare_metal'")
 	}
@@ -35,7 +35,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid working_directory_base: %w", err)
 	}
 
-	//  Bare Metal 
+	//  Bare Metal
 	if c.Execution.Mode == "bare_metal" {
 		if !c.BareMetal.Enabled {
 			return errors.New("bare_metal mode selected but bare_metal.enabled is false")
@@ -46,7 +46,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	//  Sandbox 
+	//  Sandbox
 	if c.Execution.Mode == "sandbox" {
 		if !c.Sandbox.Enabled {
 			return errors.New("sandbox mode selected but sandbox.enabled is false")
@@ -56,11 +56,11 @@ func (c *Config) Validate() error {
 			return errors.New("sandbox.image cannot be empty")
 		}
 
-		if c.Sandbox.Memory == "" {
+		if c.Sandbox.Memory == 0 {
 			return errors.New("sandbox.memory cannot be empty")
 		}
 
-		if c.Sandbox.CPUs == "" {
+		if c.Sandbox.CPUs == 0 {
 			return errors.New("sandbox.cpus cannot be empty")
 		}
 
@@ -69,7 +69,7 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	//  Logging 
+	//  Logging
 	switch c.Logging.Level {
 	case "debug", "info", "warn", "error":
 	default:
