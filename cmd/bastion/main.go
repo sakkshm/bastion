@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sakkshm/bastion/internal/api"
 	"github.com/sakkshm/bastion/internal/config"
+	"github.com/sakkshm/bastion/internal/engine"
 	"github.com/sakkshm/bastion/internal/logger"
 )
 
@@ -21,14 +23,14 @@ func main() {
 	flag.StringVar(&configPath, "config", "config/config.toml", "Config TOML file")
 	flag.Parse()
 
-	//  Load Config 
+	//  Load Config
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
 		os.Exit(1)
 	}
 
-	//  Initialize Logger 
+	//  Initialize Logger
 	log, err := logger.New(
 		cfg.Logging.Level,
 		cfg.Logging.Format,
@@ -45,12 +47,32 @@ func main() {
 		"port", cfg.Server.Port,
 	)
 
-	//  Router 
+	// Inititalise runtime
+	eng, err := engine.NewEngine()
+	if err != nil {
+		log.Error("Failed to initialize runtime", "error", err)
+		os.Exit(1)
+	}
+
+	// Route Handlers
+	routeHandler := api.NewHandler(eng, cfg, log)
+
+	//  Router
 	r := chi.NewRouter()
 
+	// Attach Routes
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
+	})
+
+	r.Post(api.CreateSessionEndpoint, routeHandler.CreateNewSession)
+
+	r.Route(api.SessionBaseEndpoint, func(r chi.Router) {
+		r.Use(routeHandler.SessionMiddleware)
+
+		r.Get(api.GetSessionStatusEndpoint, routeHandler.GetSessionStatusHandler)
+		r.Post(api.StartSessionEndpoint, routeHandler.StartSession)
 	})
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
@@ -63,7 +85,7 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	//  Start Server 
+	//  Start Server
 	go func() {
 		log.Info("Server is now listening", "address", port)
 
@@ -73,7 +95,7 @@ func main() {
 		}
 	}()
 
-	//  Graceful Shutdown 
+	//  Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
