@@ -19,6 +19,7 @@ import (
 
 func main() {
 
+	// Flags for connfig file
 	var configPath string
 	flag.StringVar(&configPath, "config", "config/config.toml", "Config TOML file")
 	flag.Parse()
@@ -48,14 +49,17 @@ func main() {
 	)
 
 	// Inititalise runtime
-	eng, err := engine.NewEngine()
+	log.Info(
+		"Initializing engine",
+	)
+	eng, err := engine.NewEngine(cfg, log)
 	if err != nil {
 		log.Error("Failed to initialize runtime", "error", err)
 		os.Exit(1)
 	}
 
 	// Route Handlers
-	routeHandler := api.NewHandler(eng, cfg, log)
+	routeHandler := api.NewHandler(eng)
 
 	//  Router
 	r := chi.NewRouter()

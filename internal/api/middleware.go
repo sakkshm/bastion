@@ -24,7 +24,7 @@ func (h *Handler) SessionMiddleware(next http.Handler) http.Handler {
 
 		sess, ok := h.Engine.Sessions.Get(id)
 		if !ok {
-			h.Logger.Error(
+			h.Engine.Logger.Error(
 				"Session with this ID does not exist",
 				"error", "session_does_not_exist",
 			)

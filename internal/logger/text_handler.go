@@ -44,7 +44,6 @@ func (h *SimpleHandler) Handle(_ context.Context, r slog.Record) error {
 
 	// <msg>
 	b.WriteString(r.Message)
-	b.WriteString(" | ")
 
 	// <attrs>
 	r.Attrs(func(a slog.Attr) bool {

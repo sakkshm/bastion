@@ -13,8 +13,8 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if h.Engine.Sessions.Count() >= h.Config.Execution.MaxConcurrent {
-		h.Logger.Error("Maximum sessions reached", "error", "max_sessions_reached")
+	if h.Engine.Sessions.Count() >= h.Engine.Config.Execution.MaxConcurrent {
+		h.Engine.Logger.Error("Maximum sessions reached", "error", "max_sessions_reached")
 		writeJSONError(w, http.StatusTooManyRequests, "Maximum sessions reached")
 		return
 	}
@@ -24,11 +24,11 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 
 	// create a container
 	containerConfig := docker.ContainerConfig{
-		Image:          h.Config.Sandbox.Image,
-		Memory:         h.Config.Sandbox.Memory,
-		CPUs:           h.Config.Sandbox.CPUs,
-		PIDs:           h.Config.Sandbox.PIDs,
-		NetworkEnabled: h.Config.Sandbox.NetworkEnabled,
+		Image:          h.Engine.Config.Sandbox.Image,
+		Memory:         h.Engine.Config.Sandbox.Memory,
+		CPUs:           h.Engine.Config.Sandbox.CPUs,
+		PIDs:           h.Engine.Config.Sandbox.PIDs,
+		NetworkEnabled: h.Engine.Config.Sandbox.NetworkEnabled,
 	}
 
 	containerID, err := h.Engine.Docker.CreateSandboxContainer(
@@ -38,7 +38,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		h.Logger.Error(
+		h.Engine.Logger.Error(
 			"Failed to create sandbox container",
 			"session_id", sessionID,
 			"error", err,
@@ -69,7 +69,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.Logger.Error("failed to encode response", "error", err)
+		h.Engine.Logger.Error("failed to encode response", "error", err)
 	}
 }
 
@@ -88,7 +88,7 @@ func (h *Handler) StartSessionHandler(w http.ResponseWriter, r *http.Request) {
 	if sess.Status != session.StatusRunning.String() {
 		err := h.Engine.Docker.StartContainer(r.Context(), sess.ContainerID)
 		if err != nil {
-			h.Logger.Error(
+			h.Engine.Logger.Error(
 				"Failed to start sandbox container",
 				"session_id", sess.ID,
 				"error", err,
@@ -112,7 +112,7 @@ func (h *Handler) StartSessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.Logger.Error("failed to encode response", "error", err)
+		h.Engine.Logger.Error("failed to encode response", "error", err)
 	}
 
 }
@@ -132,7 +132,7 @@ func (h *Handler) StopSessionHandler(w http.ResponseWriter, r *http.Request) {
 	if sess.Status != session.StatusStopped.String() {
 		err := h.Engine.Docker.StopContainer(r.Context(), sess.ContainerID)
 		if err != nil {
-			h.Logger.Error(
+			h.Engine.Logger.Error(
 				"Failed to stop sandbox container",
 				"session_id", sess.ID,
 				"error", err,
@@ -156,7 +156,7 @@ func (h *Handler) StopSessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.Logger.Error("failed to encode response", "error", err)
+		h.Engine.Logger.Error("failed to encode response", "error", err)
 	}
 
 }
@@ -173,7 +173,7 @@ func (h *Handler) DeleteSessionHandler(w http.ResponseWriter, r *http.Request) {
 	if sess.Status != session.StatusDeleted.String() {
 		err := h.Engine.Docker.DeleteContainer(r.Context(), sess.ContainerID)
 		if err != nil {
-			h.Logger.Error(
+			h.Engine.Logger.Error(
 				"Failed to delete sandbox container",
 				"session_id", sess.ID,
 				"error", err,
@@ -193,7 +193,7 @@ func (h *Handler) DeleteSessionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.Logger.Error("failed to encode response", "error", err)
+		h.Engine.Logger.Error("failed to encode response", "error", err)
 	}
 }
 
@@ -221,7 +221,7 @@ func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request
 		)
 
 		if err != nil {
-			h.Logger.Error(
+			h.Engine.Logger.Error(
 				"failed to inspect container",
 				"session_id", sess.ID,
 				"error", err,
@@ -253,6 +253,6 @@ func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		h.Logger.Error("failed to encode response", "error", err)
+		h.Engine.Logger.Error("failed to encode response", "error", err)
 	}
 }

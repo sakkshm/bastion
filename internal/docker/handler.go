@@ -2,15 +2,17 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
-	"os"
+	"log/slog"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/sakkshm/bastion/internal/session"
 )
 
@@ -34,24 +36,47 @@ func (d *DockerClient) CloseClient() error {
 	return d.APIClient.Close()
 }
 
-func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg ContainerConfig, sessionID string) (string, error) {
-	// Pull Image
-	// TODO: Right now Image is pulled for every session,
-	// make this behaviour to happen only once at startup
+func (d *DockerClient) PrefetchImage(imageName string, logger *slog.Logger) error {
+	// Pull Image at startup
 	reader, err := d.APIClient.ImagePull(
-		ctx,
-		cfg.Image,
+		context.Background(),
+		imageName,
 		image.PullOptions{},
 	)
 	if err != nil {
-		return "", err
+		return err
 	}
 	defer reader.Close()
 
-	// Stream pull progress, currently to Stdout
-	// TODO: stream this to ws
-	_, _ = io.Copy(os.Stdout, reader)
+	decoder := json.NewDecoder(reader)
 
+	for {
+		var msg jsonmessage.JSONMessage
+
+		if err := decoder.Decode(&msg); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+
+		// handle docker errors embedded in stream
+		if msg.Error != nil {
+			return fmt.Errorf("docker pull error: %s", msg.Error.Message)
+		}
+
+		logger.Info(
+			"docker pull",
+			"id", msg.ID,
+			"status", msg.Status,
+			"progress", msg.ProgressMessage,
+		)
+	}
+
+	return nil
+}
+
+func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg ContainerConfig, sessionID string) (string, error) {
 	// Container config
 	config := &container.Config{
 		Image: cfg.Image,
@@ -105,8 +130,8 @@ func (d *DockerClient) StartContainer(ctx context.Context, containerID string) e
 
 func (d *DockerClient) StopContainer(ctx context.Context, containerID string) error {
 	return d.APIClient.ContainerStop(ctx, containerID, container.StopOptions{
-			Timeout: &STOP_TIMEOUT,
-		})
+		Timeout: &STOP_TIMEOUT,
+	})
 }
 
 func (d *DockerClient) DeleteContainer(ctx context.Context, containerID string) error {
