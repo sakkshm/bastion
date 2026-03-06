@@ -1,7 +1,8 @@
 ## TODO: 
 
-- Right now Image is pulled for every session, make it happen only once at startup
 - Stream output to WS
+- Add execution timeouts for each request/operation
+- Make sure only valid Session.status transition are allowed, (ex: deleted -> started not allowed)
 - Make a container GC - Remove conatiners after TTL
 - GC Remove conatiners once marked deleted
 - Think about GC architechture

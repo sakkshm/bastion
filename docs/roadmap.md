@@ -24,9 +24,9 @@ Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with 
     - ~~CreateSessionEndpoint  = "/session/create"~~
     - ~~GetSessionStatusEndpoint  = "/session/{id}/status"~~
     - ~~StartSessionEndpoint  = "/session/{id}/start"~~
+	- ~~StopSessionEndpoint  = "/session/{id}/start"~~
+	- ~~DeleteSessionEndpoint  = "/session/{id}"~~
 	- SessionExecuteEndpoint = "/session/{id}/exec"
-	- GetSessionLogsEndpoint = "/session/{id}/logs"
-	- DeleteSessionEndpoint  = "/session/{id}"
 * WebSocket endpoint for streaming stdout/stderr
 * Docker sandbox (default)
 * Bare-metal mode (optional)
