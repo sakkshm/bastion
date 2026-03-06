@@ -13,6 +13,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// check if max concurrent sessions reached
 	if h.Engine.Sessions.Count() >= h.Engine.Config.Execution.MaxConcurrent {
 		h.Engine.Logger.Error("Maximum sessions reached", "error", "max_sessions_reached")
 		writeJSONError(w, http.StatusTooManyRequests, "Maximum sessions reached")
@@ -85,6 +86,7 @@ func (h *Handler) StartSessionHandler(w http.ResponseWriter, r *http.Request) {
 	// Update session data
 	h.Engine.Sessions.Touch(sess.ID)
 
+	// start container if not already running
 	if sess.Status != session.StatusRunning.String() {
 		err := h.Engine.Docker.StartContainer(r.Context(), sess.ContainerID)
 		if err != nil {
@@ -129,6 +131,7 @@ func (h *Handler) StopSessionHandler(w http.ResponseWriter, r *http.Request) {
 	// Update session data
 	h.Engine.Sessions.Touch(sess.ID)
 
+	// stop if not already stopped
 	if sess.Status != session.StatusStopped.String() {
 		err := h.Engine.Docker.StopContainer(r.Context(), sess.ContainerID)
 		if err != nil {
@@ -170,6 +173,8 @@ func (h *Handler) DeleteSessionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// delete container if not already deleted
+	// does not delete entry from SessionManager - Will be handles by GC
 	if sess.Status != session.StatusDeleted.String() {
 		err := h.Engine.Docker.DeleteContainer(r.Context(), sess.ContainerID)
 		if err != nil {
@@ -214,6 +219,7 @@ func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request
 		err             error
 	)
 
+	// sync status if not deleted
 	if sess.Status != session.StatusDeleted.String() {
 		containerStatus, err = h.Engine.Docker.GetContainerStatus(
 			r.Context(),

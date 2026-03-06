@@ -44,6 +44,7 @@ func (sm *SessionManager) Count() int {
 	return len(sm.sessions)
 }
 
+// Update lastUsedAt field after an operation
 func (sm *SessionManager) Touch(id string) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()

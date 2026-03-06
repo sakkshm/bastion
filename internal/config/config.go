@@ -27,9 +27,9 @@ type BareMetalConfig struct {
 
 type SandboxConfig struct {
 	Enabled        bool    `toml:"enabled"`
-	Image          string  `toml:"image"`
+	Image          string  `toml:"image"` // image of containers for sandbox
 	NetworkEnabled bool    `toml:"network_enabled"`
-	Memory         int     `toml:"memory_mbs"`
+	Memory         int     `toml:"memory_mbs"` 
 	CPUs           float32 `toml:"cpus"`
 	PIDs           int     `toml:"pids"`
 }
@@ -43,6 +43,10 @@ type LoggingConfig struct {
 func (c *Config) applyDefaults() {
 	if c.Server.Host == "" {
 		c.Server.Host = "0.0.0.0"
+	}
+
+	if c.Server.Port == 0 {
+		c.Server.Port = 8080
 	}
 
 	if c.Logging.Level == "" {
