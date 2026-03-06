@@ -36,3 +36,7 @@ func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 		Config:   cfg,
 	}, nil
 }
+
+func (e *Engine) Close() error {
+	return e.Docker.CloseClient()
+}

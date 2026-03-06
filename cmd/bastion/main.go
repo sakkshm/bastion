@@ -19,7 +19,7 @@ import (
 
 func main() {
 
-	// Flags for connfig file
+	// Flags for config file
 	var configPath string
 	flag.StringVar(&configPath, "config", "config/config.toml", "Config TOML file")
 	flag.Parse()
@@ -49,9 +49,7 @@ func main() {
 	)
 
 	// Inititalise runtime
-	log.Info(
-		"Initializing engine",
-	)
+	log.Info("Initializing engine")
 	eng, err := engine.NewEngine(cfg, log)
 	if err != nil {
 		log.Error("Failed to initialize runtime", "error", err)
@@ -115,5 +113,11 @@ func main() {
 		log.Error("Graceful shutdown failed", "error", err)
 	} else {
 		log.Info("Server stopped gracefully")
+	}
+
+	if err := eng.Close(); err != nil {
+		log.Error("Failed to close client resources", "error", err)
+	} else {
+		log.Info("Client resources closed")
 	}
 }
