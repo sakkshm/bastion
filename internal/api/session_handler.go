@@ -62,6 +62,8 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	// return session identifier to client
 	resp := CreateSessionResponse{
 		SessionID: sessionID,
+		Status:    sess.Status,
+		CreatedAt: sess.CreatedAt,
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -71,7 +73,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) StartSession(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) StartSessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
@@ -115,8 +117,7 @@ func (h *Handler) StartSession(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request) {
-
+func (h *Handler) StopSessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
@@ -127,6 +128,119 @@ func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request
 
 	// Update session data
 	h.Engine.Sessions.Touch(sess.ID)
+
+	if sess.Status != session.StatusStopped.String() {
+		err := h.Engine.Docker.StopContainer(r.Context(), sess.ContainerID)
+		if err != nil {
+			h.Logger.Error(
+				"Failed to stop sandbox container",
+				"session_id", sess.ID,
+				"error", err,
+			)
+			writeJSONError(w, http.StatusInternalServerError, "Failed to stop sandbox container")
+			return
+		}
+	}
+
+	h.Engine.Sessions.UpdateStatus(sess.ID, session.StatusStopped)
+	sess.Status = session.StatusStopped.String()
+
+	resp := StopSessionResponse{
+		ID:          sess.ID,
+		ContainerID: sess.ContainerID,
+		CreatedAt:   sess.CreatedAt,
+		LastUsedAt:  sess.LastUsedAt,
+		Status:      sess.Status,
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		h.Logger.Error("failed to encode response", "error", err)
+	}
+
+}
+
+func (h *Handler) DeleteSessionHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
+	if !ok {
+		writeJSONError(w, http.StatusInternalServerError, "session context missing")
+		return
+	}
+
+	if sess.Status != session.StatusDeleted.String() {
+		err := h.Engine.Docker.DeleteContainer(r.Context(), sess.ContainerID)
+		if err != nil {
+			h.Logger.Error(
+				"Failed to delete sandbox container",
+				"session_id", sess.ID,
+				"error", err,
+			)
+			writeJSONError(w, http.StatusInternalServerError, "Failed to delete sandbox container")
+			return
+		}
+
+		h.Engine.Sessions.UpdateStatus(sess.ID, session.StatusDeleted)
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	resp := DeleteSessionResponse{
+		SessionID: sess.ID,
+		Status:    session.StatusDeleted.String(),
+	}
+
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		h.Logger.Error("failed to encode response", "error", err)
+	}
+}
+
+func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
+	if !ok {
+		writeJSONError(w, http.StatusInternalServerError, "session context missing")
+		return
+	}
+
+	h.Engine.Sessions.Touch(sess.ID)
+
+	var (
+		containerStatus session.Status
+		err             error
+	)
+
+	if sess.Status != session.StatusDeleted.String() {
+		containerStatus, err = h.Engine.Docker.GetContainerStatus(
+			r.Context(),
+			sess.ContainerID,
+		)
+
+		if err != nil {
+			h.Logger.Error(
+				"failed to inspect container",
+				"session_id", sess.ID,
+				"error", err,
+			)
+			writeJSONError(w, http.StatusInternalServerError, "failed to inspect container")
+			return
+		}
+
+		// sync docker state with session state
+		// only update the session state if the session thinks it's running but docker says it isn't
+		if containerStatus != session.StatusRunning &&
+			containerStatus != session.StatusBusy &&
+			sess.Status == session.StatusRunning.String() {
+
+			h.Engine.Sessions.UpdateStatus(sess.ID, containerStatus)
+			sess.Status = containerStatus.String()
+		}
+
+	}
 
 	resp := GetSessionStatusResponse{
 		ID:          sess.ID,

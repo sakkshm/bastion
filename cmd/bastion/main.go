@@ -61,9 +61,9 @@ func main() {
 	r := chi.NewRouter()
 
 	// Attach Routes
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("Bastion server running!"))
 	})
 
 	r.Post(api.CreateSessionEndpoint, routeHandler.CreateNewSession)
@@ -71,8 +71,10 @@ func main() {
 	r.Route(api.SessionBaseEndpoint, func(r chi.Router) {
 		r.Use(routeHandler.SessionMiddleware)
 
+		r.Post(api.StartSessionEndpoint, routeHandler.StartSessionHandler)
+		r.Post(api.StopSessionEndpoint, routeHandler.StopSessionHandler)
+		r.Delete(api.DeleteSessionEndpoint, routeHandler.DeleteSessionHandler)
 		r.Get(api.GetSessionStatusEndpoint, routeHandler.GetSessionStatusHandler)
-		r.Post(api.StartSessionEndpoint, routeHandler.StartSession)
 	})
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
@@ -80,7 +82,7 @@ func main() {
 	srv := &http.Server{
 		Addr:         port,
 		Handler:      r,
-		ReadTimeout:  5 * time.Second,
+		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}

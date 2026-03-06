@@ -11,7 +11,10 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/sakkshm/bastion/internal/session"
 )
+
+var STOP_TIMEOUT int = 3
 
 func NewDockerClient() (*DockerClient, error) {
 	apiClient, err := client.NewClientWithOpts(
@@ -62,7 +65,7 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 	pid_limits := int64(cfg.PIDs)
 
 	hostConfig := &container.HostConfig{
-		AutoRemove:     true,                          // automatically remove when stopped
+		// AutoRemove:     true,                          // automatically remove when stopped
 		ReadonlyRootfs: true,                          // cannot change anything in root fs
 		SecurityOpt:    []string{"no-new-privileges"}, // deny privilege escalation
 		CapDrop:        []string{"ALL"},               // drop linux
@@ -98,4 +101,45 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 
 func (d *DockerClient) StartContainer(ctx context.Context, containerID string) error {
 	return d.APIClient.ContainerStart(ctx, containerID, container.StartOptions{})
+}
+
+func (d *DockerClient) StopContainer(ctx context.Context, containerID string) error {
+	return d.APIClient.ContainerStop(ctx, containerID, container.StopOptions{
+			Timeout: &STOP_TIMEOUT,
+		})
+}
+
+func (d *DockerClient) DeleteContainer(ctx context.Context, containerID string) error {
+	return d.APIClient.ContainerRemove(ctx, containerID, container.RemoveOptions{
+		Force: true,
+	})
+}
+
+func (d *DockerClient) GetContainerStatus(ctx context.Context, containerID string) (session.Status, error) {
+
+	info, err := d.APIClient.ContainerInspect(ctx, containerID)
+	if err != nil {
+		return session.StatusFailed, err
+	}
+
+	if info.State == nil {
+		return session.StatusFailed, nil
+	}
+
+	switch {
+	case info.State.Running:
+		return session.StatusRunning, nil
+
+	case info.State.Restarting:
+		return session.StatusStarting, nil
+
+	case info.State.Paused:
+		return session.StatusBusy, nil
+
+	case info.State.Dead:
+		return session.StatusFailed, nil
+
+	default:
+		return session.StatusStopped, nil
+	}
 }
