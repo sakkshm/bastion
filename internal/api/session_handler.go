@@ -52,14 +52,16 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	// create a session entry
 	now := time.Now().UTC()
 
+	// make a new job handler
+	jobHandler := session.NewJobHandler()
+
 	sess := session.Session{
 		ID:          sessionID,
 		ContainerID: containerID,
 		CreatedAt:   now,
 		LastUsedAt:  now,
 		Status:      session.StatusCreated,
-		Jobs:        make(map[string]*session.ExecJob),
-		Queue:       make(chan *session.ExecJob),
+		JobHandler:  jobHandler,
 	}
 	h.Engine.Sessions.Add(&sess)
 
@@ -309,10 +311,10 @@ func (h *Handler) SessionExecuteHandler(w http.ResponseWriter, r *http.Request) 
 		CreatedAt: time.Now().UTC(),
 	}
 
-	sess.Jobs[job.JobID] = job
+	sess.JobHandler.Add(job)
 
 	// enqueue async job
-	sess.Queue <- job
+	sess.JobHandler.Queue <- job
 
 	// touch session
 	h.Engine.Sessions.Touch(sess.ID)
@@ -339,7 +341,7 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	job, ok := sess.Jobs[jobID]
+	job, ok := sess.JobHandler.Get(jobID)
 	if !ok {
 		writeJSONError(w, http.StatusForbidden, "job does not exist")
 		return

@@ -12,8 +12,7 @@ type Session struct {
 	CreatedAt   time.Time
 	LastUsedAt  time.Time
 	Status      Status
-	Jobs        map[string]*ExecJob
-	Queue       chan *ExecJob
+	JobHandler  *JobHandler
 }
 
 type Status int
