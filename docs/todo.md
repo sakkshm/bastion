@@ -1,7 +1,7 @@
 ## TODO: 
 
 - Stream output to WS
-- Add execution timeouts for each request/operation
+- Add execution timeouts for each request/operation/job
 - Make sure only valid Session.status transition are allowed, (ex: deleted -> started not allowed)
 - Make a container GC - Remove conatiners after TTL
 - GC Remove conatiners once marked deleted

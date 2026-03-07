@@ -11,7 +11,9 @@ type Session struct {
 	ContainerID string
 	CreatedAt   time.Time
 	LastUsedAt  time.Time
-	Status      string
+	Status      Status
+	Jobs        map[string]*ExecJob
+	Queue       chan *ExecJob
 }
 
 type Status int
@@ -47,7 +49,48 @@ func (s Status) String() string {
 	}
 }
 
+type ExecJob struct {
+	JobID     string
+	Cmd       []string
+	Status    JobStatus
+	Output    string
+	ErrOut    string
+	CreatedAt time.Time
+}
+
+type JobStatus int
+
+const (
+	JobQueued JobStatus = iota
+	JobRunning
+	JobCompleted
+	JobFailed
+)
+
+func (s JobStatus) String() string {
+	switch s {
+	case JobQueued:
+		return "queued"
+	case JobRunning:
+		return "running"
+	case JobCompleted:
+		return "completed"
+	case JobFailed:
+		return "failed"
+	default:
+		return "unknown"
+	}
+}
+
+const SESSION_ID_LEN = 8
+const JOB_ID_LEN = 6
+
 func GenerateSessionID() string {
 	id := uuid.New()
 	return id.String()[:SESSION_ID_LEN]
+}
+
+func GenerateJobID() string {
+	id := uuid.New()
+	return id.String()[:JOB_ID_LEN]
 }

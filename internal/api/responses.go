@@ -28,6 +28,20 @@ type GetSessionStatusResponse struct {
 type StartSessionResponse = GetSessionStatusResponse
 type StopSessionResponse = GetSessionStatusResponse
 
+type JobExecResponse struct {
+	JobID  string `json:"job_id"`
+	Status string `json:"status"`
+}
+
+type JobStatusResponse struct {
+	JobID     string    `json:"job_id"`
+	Cmd       []string  `json:"cmd"`
+	Status    string    `json:"status"`
+	Output    string    `json:"output"`
+	ErrOut    string    `json:"errout"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type APIError struct {
 	Error string `json:"error"`
 }

@@ -11,4 +11,5 @@ const (
 	GetSessionStatusEndpoint = "/status"
 	SessionExecuteEndpoint   = "/exec"
 	GetSessionLogsEndpoint   = "/logs"
+	GetJobStatusEndpoint     = "/job/{job_id}"
 )

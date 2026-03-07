@@ -10,8 +10,6 @@ type SessionManager struct {
 	mu       sync.RWMutex
 }
 
-const SESSION_ID_LEN = 8
-
 func NewSessionManager() *SessionManager {
 	return &SessionManager{
 		sessions: make(map[string]*Session),
@@ -59,6 +57,6 @@ func (sm *SessionManager) UpdateStatus(id string, status Status) {
 	defer sm.mu.Unlock()
 
 	if s, ok := sm.sessions[id]; ok {
-		s.Status = status.String()
+		s.Status = status
 	}
 }

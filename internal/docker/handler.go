@@ -1,10 +1,12 @@
 package docker
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 
 	"github.com/docker/docker/api/types/container"
@@ -13,6 +15,7 @@ import (
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/sakkshm/bastion/internal/session"
 )
 
@@ -167,4 +170,80 @@ func (d *DockerClient) GetContainerStatus(ctx context.Context, containerID strin
 	default:
 		return session.StatusStopped, nil
 	}
+}
+
+func (d *DockerClient) SessionRunJob(ctx context.Context, containerID string, cmd []string) (string, string, int, error) {
+
+	execConfig := container.ExecOptions{
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+		AttachStdin:  false, // no user inputs
+	}
+
+	resp, err := d.APIClient.ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return "", "", -1, err
+	}
+
+	attach, err := d.APIClient.ContainerExecAttach(ctx, resp.ID, container.ExecAttachOptions{})
+	if err != nil {
+		return "", "", -1, err
+	}
+	defer attach.Close()
+
+	var stdout, stderr bytes.Buffer
+	// Limit stream output to prevent excessivley large buffers
+	io.LimitReader(attach.Reader, 10<<20) // 10MB
+
+	// demux output into two streams
+	_, err = stdcopy.StdCopy(&stdout, &stderr, attach.Reader)
+	if err != nil {
+		return "", "", -1, err
+	}
+
+	// check for exit codes
+	inspect, err := d.APIClient.ContainerExecInspect(ctx, resp.ID)
+	if err != nil {
+		return stdout.String(), stderr.String(), -1, err
+	}
+
+	output := stdout.String()
+	errout := stderr.String()
+	exitCode := inspect.ExitCode
+
+	return output, errout, exitCode, nil
+}
+
+func (e *DockerClient) AttachWorker(sess *session.Session) {
+	go func() {
+		defer func() {
+			// recover goroutine if worker panics
+			if r := recover(); r != nil {
+				log.Printf("worker panic, error:")
+				log.Println(r)
+			}
+		}()
+
+		for job := range sess.Queue {
+			job.Status = session.JobRunning
+
+			// TODO: add per job timeout
+			output, errout, exitCode, err := e.SessionRunJob(context.TODO(), sess.ContainerID, job.Cmd)
+
+			job.Output = output
+			job.ErrOut = errout
+
+			if err != nil {
+				job.Status = session.JobFailed
+				job.ErrOut = err.Error()
+				continue
+			}
+			if exitCode != 0 {
+				job.Status = session.JobFailed
+			} else {
+				job.Status = session.JobCompleted
+			}
+		}
+	}()
 }

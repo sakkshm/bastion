@@ -77,6 +77,9 @@ func main() {
 		r.Post(api.StopSessionEndpoint, routeHandler.StopSessionHandler)
 		r.Delete(api.DeleteSessionEndpoint, routeHandler.DeleteSessionHandler)
 		r.Get(api.GetSessionStatusEndpoint, routeHandler.GetSessionStatusHandler)
+
+		r.Post(api.SessionExecuteEndpoint, routeHandler.SessionExecuteHandler)
+		r.Get(api.GetJobStatusEndpoint, routeHandler.GetJobStatusHandler)
 	})
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)

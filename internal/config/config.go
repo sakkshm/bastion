@@ -29,7 +29,7 @@ type SandboxConfig struct {
 	Enabled        bool    `toml:"enabled"`
 	Image          string  `toml:"image"` // image of containers for sandbox
 	NetworkEnabled bool    `toml:"network_enabled"`
-	Memory         int     `toml:"memory_mbs"` 
+	Memory         int     `toml:"memory_mbs"`
 	CPUs           float32 `toml:"cpus"`
 	PIDs           int     `toml:"pids"`
 }
