@@ -112,7 +112,7 @@
 
   * AttachWorker:
 
-    * Spawns a goroutine worker for each session.
+    * Spawns multiple goroutine worker for each session.
     * Continuously consumes jobs from the session Queue.
     * Marks job status as running.
     * Executes the command via `SessionRunJob`.

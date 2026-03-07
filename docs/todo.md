@@ -4,6 +4,7 @@
 - Add execution timeouts for each request/operation/job
 - Add dashboard type endpoint for admin to montior system
 - Add a latency check/benchmark system
+- Improve cmd exec latency by: use a persistent shell using stdin instead of calling exec always (one shell per worker), batching jobs
 - Make sure only valid Session.status transition are allowed, (ex: deleted -> started not allowed)
 - Make a container GC - Remove conatiners after TTL
 - GC Remove conatiners once marked deleted

@@ -66,7 +66,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	h.Engine.Sessions.Add(&sess)
 
 	// atatch a worker to this session to execute jobs
-	h.Engine.Logger.Info("Attaching worker to session", "session_id", sess.ID)
+	h.Engine.Logger.Info("Attaching workers to session", "session_id", sess.ID)
 	h.Engine.Docker.AttachWorker(&sess)
 
 	// return session identifier to client

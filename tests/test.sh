@@ -4,6 +4,14 @@ set -e
 
 BASE="http://localhost:8080"
 
+CONCURRENCY=100
+REQUESTS=100
+
+LAT_FILE="/tmp/latencies.txt"
+ERR_FILE="/tmp/errors.txt"
+
+rm -f $LAT_FILE $ERR_FILE
+
 request() {
   METHOD=$1
   URL=$2
@@ -12,115 +20,205 @@ request() {
   START=$(date +%s%3N)
 
   if [ -z "$DATA" ]; then
-    RESP=$(curl -s -w "\n%{http_code}" -X "$METHOD" "$URL")
+    CODE=$(curl -s -o /dev/null -w "%{http_code}" -X "$METHOD" "$URL")
   else
-    RESP=$(curl -s -w "\n%{http_code}" -X "$METHOD" "$URL" \
+    CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+      -X "$METHOD" "$URL" \
       -H "Content-Type: application/json" \
       -d "$DATA")
   fi
 
   END=$(date +%s%3N)
-  DURATION=$((END-START))
 
-  BODY=$(echo "$RESP" | head -n -1)
-  CODE=$(echo "$RESP" | tail -n1)
+  LAT=$((END - START))
 
-  echo "HTTP $CODE (${DURATION}ms)" >&2
+  echo $LAT >> $LAT_FILE
 
-  if [ "$CODE" -ge 400 ]; then
-    echo "Request failed ($CODE)" >&2
+  if [[ "$CODE" -ge 400 ]]; then
+    echo "$CODE" >> $ERR_FILE
   fi
-
-  echo "$BODY"
 }
 
+print_stats() {
+
+  TOTAL=$(wc -l < $LAT_FILE)
+
+  if [ -f "$ERR_FILE" ]; then
+    ERRORS=$(wc -l < $ERR_FILE)
+  else
+    ERRORS=0
+  fi
+
+  AVG=$(awk '{s+=$1} END {print s/NR}' $LAT_FILE)
+  MIN=$(sort -n $LAT_FILE | head -n1)
+  MAX=$(sort -n $LAT_FILE | tail -n1)
+
+  P50=$(sort -n $LAT_FILE | awk 'NR==int(NR*0.50)')
+  P95=$(sort -n $LAT_FILE | awk 'NR==int(NR*0.95)')
+  P99=$(sort -n $LAT_FILE | awk 'NR==int(NR*0.99)')
+
+  RPS=$(awk "BEGIN {print $TOTAL / ($TOTAL_TIME / 1000)}")
+
+  echo "Requests:        $TOTAL"
+  echo "Errors:          $ERRORS"
+  echo "Concurrency:     $CONCURRENCY"
+  echo "Total time:      ${TOTAL_TIME} ms"
+  echo "Requests/sec:    $RPS"
+  echo
+
+  echo "Latency:"
+  echo "  avg: ${AVG} ms"
+  echo "  min: ${MIN} ms"
+  echo "  p50: ${P50} ms"
+  echo "  p95: ${P95} ms"
+  echo "  p99: ${P99} ms"
+  echo "  max: ${MAX} ms"
+}
+
+benchmark() {
+
+  NAME=$1
+  METHOD=$2
+  URL=$3
+  DATA=$4
+
+  echo
+  echo "======================================"
+  echo "$NAME"
+  echo "======================================"
+
+  rm -f $LAT_FILE $ERR_FILE
+
+  START_TOTAL=$(date +%s%3N)
+
+  for i in $(seq 1 $REQUESTS); do
+  (
+    request "$METHOD" "$URL" "$DATA"
+  ) &
+
+  if (( i % CONCURRENCY == 0 )); then
+      wait
+  fi
+  done
+
+  wait
+
+  END_TOTAL=$(date +%s%3N)
+
+  TOTAL_TIME=$((END_TOTAL - START_TOTAL))
+
+  print_stats
+}
+
+echo "======================================"
+echo "Functional Tests"
+echo "======================================"
+
 echo "Creating session"
-CREATE=$(request POST "$BASE/session/create")
-echo "$CREATE"
+SESSION=$(curl -s -X POST "$BASE/session/create")
+SESSION_ID=$(echo "$SESSION" | jq -r '.session_id')
 
-SESSION_ID=$(echo "$CREATE" | jq -r '.session_id')
-
-echo "Session ID: $SESSION_ID"
-echo
+echo "Session: $SESSION_ID"
 
 echo "Starting session"
-request POST "$BASE/session/$SESSION_ID/start" | jq
-echo
+curl -s -X POST "$BASE/session/$SESSION_ID/start" > /dev/null
 
-echo "Checking session status"
-request GET "$BASE/session/$SESSION_ID/status" | jq
-echo
+sleep 1
 
-echo "Executing multiple commands"
+echo "Checking status"
+curl -s "$BASE/session/$SESSION_ID/status" | jq
 
-EXEC1=$(request POST "$BASE/session/$SESSION_ID/exec" '{"cmd":["echo","hello"]}')
-echo "$EXEC1"
-JOB1=$(echo "$EXEC1" | jq -r '.job_id')
+echo "Executing test command"
+EXEC=$(curl -s -X POST "$BASE/session/$SESSION_ID/exec" \
+  -H "Content-Type: application/json" \
+  -d '{"cmd":["echo","hello"]}')
 
-EXEC2=$(request POST "$BASE/session/$SESSION_ID/exec" '{"cmd":["uname","-a"]}')
-echo "$EXEC2"
-JOB2=$(echo "$EXEC2" | jq -r '.job_id')
+JOB=$(echo "$EXEC" | jq -r '.job_id')
 
-echo "Job1: $JOB1"
-echo "Job2: $JOB2"
-echo
+echo "Job ID: $JOB"
 
-echo "Polling job status"
+echo "Waiting for job"
 
-for JOB in $JOB1 $JOB2; do
-  while true; do
-    STATUS=$(curl -s "$BASE/session/$SESSION_ID/job/$JOB")
-    STATE=$(echo "$STATUS" | jq -r '.status')
+while true; do
+  STATUS=$(curl -s "$BASE/session/$SESSION_ID/job/$JOB")
+  STATE=$(echo "$STATUS" | jq -r '.status')
 
+  if [[ "$STATE" == "completed" || "$STATE" == "failed" ]]; then
     echo "$STATUS" | jq
+    break
+  fi
 
-    if [[ "$STATE" == "completed" || "$STATE" == "failed" ]]; then
-      break
-    fi
-
-    sleep 1
-  done
+  sleep 1
 done
 
 echo
-echo "Testing invalid request (missing cmd)"
-request POST "$BASE/session/$SESSION_ID/exec" '{}' | jq
+echo "======================================"
+echo "Benchmark Tests"
+echo "======================================"
+
+benchmark \
+"Create Session Endpoint" \
+POST \
+"$BASE/session/create"
+
+benchmark \
+"Session Status Endpoint" \
+GET \
+"$BASE/session/$SESSION_ID/status"
+
+benchmark \
+"Exec Endpoint" \
+POST \
+"$BASE/session/$SESSION_ID/exec" \
+'{"cmd":["echo","bench"]}'
+
 echo
+echo "======================================"
+echo "Mixed Workload Test"
+echo "======================================"
 
-echo "Concurrent sessions test"
+rm -f $LAT_FILE $ERR_FILE
 
-for i in {1..3}; do
-  curl -s -X POST "$BASE/session/create" | jq &
+START_TOTAL=$(date +%s%3N)
+
+for i in $(seq 1 $REQUESTS); do
+(
+  if (( i % 2 == 0 )); then
+    request POST "$BASE/session/$SESSION_ID/exec" '{"cmd":["echo","mixed"]}'
+  else
+    request GET "$BASE/session/$SESSION_ID/status"
+  fi
+) &
+
+if (( i % CONCURRENCY == 0 )); then
+  wait
+fi
+
 done
 
 wait
 
-echo
-echo "Parallel job test"
+END_TOTAL=$(date +%s%3N)
+TOTAL_TIME=$((END_TOTAL - START_TOTAL))
 
-for i in {1..5}; do
-  curl -s -X POST "$BASE/session/$SESSION_ID/exec" \
-    -H "Content-Type: application/json" \
-    -d '{"cmd":["echo","parallel"]}' | jq &
-done
-
-wait
+print_stats
 
 echo
-echo "Stress test: creating many sessions"
+echo "======================================"
+echo "Stress Test: Session Creation"
+echo "======================================"
 
-for i in {1..100}; do
-  curl -s -X POST "$BASE/session/create" > /dev/null &
-done
+benchmark \
+"Concurrent Session Creation" \
+POST \
+"$BASE/session/create"
 
-wait
-
+echo
 echo "Stopping session"
-request POST "$BASE/session/$SESSION_ID/stop" | jq
-echo
+curl -s -X POST "$BASE/session/$SESSION_ID/stop" > /dev/null
 
 echo "Deleting session"
-request DELETE "$BASE/session/$SESSION_ID/" | jq
-echo
+curl -s -X DELETE "$BASE/session/$SESSION_ID/" > /dev/null
 
-echo "Test script completed"
+echo
+echo "All tests completed"

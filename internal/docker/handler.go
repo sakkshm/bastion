@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"log/slog"
+	"runtime"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -217,34 +218,39 @@ func (d *DockerClient) SessionRunJob(ctx context.Context, containerID string, cm
 }
 
 func (e *DockerClient) AttachWorker(sess *session.Session) {
-	go func() {
-		defer func() {
-			// recover goroutine if worker panics
-			if r := recover(); r != nil {
-				log.Printf("worker panic, error:")
-				log.Println(r)
+
+	workerCount := runtime.NumCPU()
+
+	for range workerCount {
+		go func() {
+			defer func() {
+				// recover goroutine if worker panics
+				if r := recover(); r != nil {
+					log.Printf("worker panic, error:")
+					log.Println(r)
+				}
+			}()
+
+			for job := range sess.JobHandler.Queue {
+				job.Status = session.JobRunning
+
+				// TODO: add per job timeout
+				output, errout, exitCode, err := e.SessionRunJob(context.TODO(), sess.ContainerID, job.Cmd)
+
+				job.Output = output
+				job.ErrOut = errout
+
+				if err != nil {
+					job.Status = session.JobFailed
+					job.ErrOut = err.Error()
+					continue
+				}
+				if exitCode != 0 {
+					job.Status = session.JobFailed
+				} else {
+					job.Status = session.JobCompleted
+				}
 			}
 		}()
-
-		for job := range sess.Queue {
-			job.Status = session.JobRunning
-
-			// TODO: add per job timeout
-			output, errout, exitCode, err := e.SessionRunJob(context.TODO(), sess.ContainerID, job.Cmd)
-
-			job.Output = output
-			job.ErrOut = errout
-
-			if err != nil {
-				job.Status = session.JobFailed
-				job.ErrOut = err.Error()
-				continue
-			}
-			if exitCode != 0 {
-				job.Status = session.JobFailed
-			} else {
-				job.Status = session.JobCompleted
-			}
-		}
-	}()
+	}
 }
