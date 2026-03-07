@@ -26,11 +26,10 @@ Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with 
     - ~~StartSessionEndpoint  = "/session/{id}/start"~~
 	- ~~StopSessionEndpoint  = "/session/{id}/start"~~
 	- ~~DeleteSessionEndpoint  = "/session/{id}"~~
-	- SessionExecuteEndpoint = "/session/{id}/exec"
+	- ~~SessionExecuteEndpoint = "/session/{id}/exec"~~
 * WebSocket endpoint for streaming stdout/stderr
-* Docker sandbox (default)
+* ~~Docker sandbox (default)~~
 * Bare-metal mode (optional)
-* Workspace-scoped file access
 
 **Implementation Notes (Go):**
 
@@ -100,6 +99,7 @@ type Policy struct {
 
 **Features:**
 
+* Workspace-scoped file access
 * Upload, Download, Delete files
 * List directories
 * Optional search

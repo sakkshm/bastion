@@ -19,8 +19,6 @@ import (
 	"github.com/sakkshm/bastion/internal/session"
 )
 
-var STOP_TIMEOUT int = 3
-
 func NewDockerClient() (*DockerClient, error) {
 	apiClient, err := client.NewClientWithOpts(
 		client.FromEnv,
@@ -132,6 +130,9 @@ func (d *DockerClient) StartContainer(ctx context.Context, containerID string) e
 }
 
 func (d *DockerClient) StopContainer(ctx context.Context, containerID string) error {
+
+	var STOP_TIMEOUT int = 0
+
 	return d.APIClient.ContainerStop(ctx, containerID, container.StopOptions{
 		Timeout: &STOP_TIMEOUT,
 	})

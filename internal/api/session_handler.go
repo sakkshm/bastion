@@ -306,7 +306,7 @@ func (h *Handler) SessionExecuteHandler(w http.ResponseWriter, r *http.Request) 
 		Cmd:       req.Cmd,
 		Status:    session.JobQueued,
 		Output:    "",
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 	}
 
 	sess.Jobs[job.JobID] = job
