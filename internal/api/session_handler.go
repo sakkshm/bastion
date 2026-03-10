@@ -350,15 +350,21 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 	// touch session
 	h.Engine.Sessions.Touch(sess.ID)
 
-	json.NewEncoder(w).Encode(JobStatusResponse{
-		JobID:  job.JobID,
-		Cmd:    job.Cmd,
-		Status: job.Status.String(),
-		Output: JobOutputResponse{
+	resp := JobStatusResponse{
+		JobID:     job.JobID,
+		Cmd:       job.Cmd,
+		Status:    job.Status.String(),
+		CreatedAt: job.CreatedAt,
+	}
+
+	if job.Status == session.JobCompleted {
+		resp.Output = &JobOutputResponse{
 			ConsoleOutput: job.Output.ConsoleOutput,
 			ErrOut:        job.Output.ErrOut,
 			StatusCode:    job.Output.StatusCode,
-		},
-		CreatedAt: job.CreatedAt,
-	})
+		}
+	}
+
+	json.NewEncoder(w).Encode(resp)
+
 }
