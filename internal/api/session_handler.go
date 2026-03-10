@@ -307,7 +307,7 @@ func (h *Handler) SessionExecuteHandler(w http.ResponseWriter, r *http.Request) 
 		JobID:     jobID,
 		Cmd:       req.Cmd,
 		Status:    session.JobQueued,
-		Output:    "",
+		Output:    session.ExecJobOutput{},
 		CreatedAt: time.Now().UTC(),
 	}
 
@@ -351,11 +351,14 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 	h.Engine.Sessions.Touch(sess.ID)
 
 	json.NewEncoder(w).Encode(JobStatusResponse{
-		JobID:     job.JobID,
-		Cmd:       job.Cmd,
-		Status:    job.Status.String(),
-		Output:    job.Output,
-		ErrOut:    job.ErrOut,
+		JobID:  job.JobID,
+		Cmd:    job.Cmd,
+		Status: job.Status.String(),
+		Output: JobOutputResponse{
+			ConsoleOutput: job.Output.ConsoleOutput,
+			ErrOut:        job.Output.ErrOut,
+			StatusCode:    job.Output.StatusCode,
+		},
 		CreatedAt: job.CreatedAt,
 	})
 }

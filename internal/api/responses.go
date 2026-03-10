@@ -34,12 +34,17 @@ type JobExecResponse struct {
 }
 
 type JobStatusResponse struct {
-	JobID     string    `json:"job_id"`
-	Cmd       []string  `json:"cmd"`
-	Status    string    `json:"status"`
-	Output    string    `json:"output"`
-	ErrOut    string    `json:"errout"`
-	CreatedAt time.Time `json:"created_at"`
+	JobID     string            `json:"job_id"`
+	Cmd       []string          `json:"cmd"`
+	Status    string            `json:"status"`
+	Output    JobOutputResponse `json:"output"`
+	CreatedAt time.Time         `json:"created_at"`
+}
+
+type JobOutputResponse struct {
+	ConsoleOutput string `json:"console_output"`
+	ErrOut        string `json:"errout"`
+	StatusCode    int    `json:"status_code"`
 }
 
 type APIError struct {

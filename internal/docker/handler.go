@@ -237,12 +237,12 @@ func (e *DockerClient) AttachWorker(sess *session.Session) {
 				// TODO: add per job timeout
 				output, errout, exitCode, err := e.SessionRunJob(context.TODO(), sess.ContainerID, job.Cmd)
 
-				job.Output = output
-				job.ErrOut = errout
+				job.Output.ConsoleOutput = output
+				job.Output.ErrOut = errout
 
 				if err != nil {
 					job.Status = session.JobFailed
-					job.ErrOut = err.Error()
+					job.Output.ErrOut = err.Error()
 					continue
 				}
 				if exitCode != 0 {

@@ -52,9 +52,14 @@ type ExecJob struct {
 	JobID     string
 	Cmd       []string
 	Status    JobStatus
-	Output    string
-	ErrOut    string
+	Output    ExecJobOutput
 	CreatedAt time.Time
+}
+
+type ExecJobOutput struct {
+	ConsoleOutput string
+	ErrOut        string
+	StatusCode    int
 }
 
 type JobStatus int
