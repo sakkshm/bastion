@@ -67,6 +67,10 @@ func (c *Config) Validate() error {
 		if c.Sandbox.PIDs <= 0 {
 			return errors.New("sandbox.pids must be > 0")
 		}
+
+		if c.Sandbox.JobTTL <= 0 {
+			return errors.New("sandbox.job_ttl must be > 0")
+		}
 	}
 
 	//  Logging

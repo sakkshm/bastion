@@ -32,6 +32,7 @@ type SandboxConfig struct {
 	Memory         int     `toml:"memory_mbs"`
 	CPUs           float32 `toml:"cpus"`
 	PIDs           int     `toml:"pids"`
+	JobTTL         int     `toml:"job_ttl"`
 }
 
 type LoggingConfig struct {

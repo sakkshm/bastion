@@ -23,6 +23,7 @@ network_enabled = false
 memory_mbs = 512
 cpus = 0.5
 pids = 128
+job_ttl = 5
 
 [logging]
 level = "info"
