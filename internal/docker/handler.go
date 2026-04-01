@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
-	"runtime"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -88,20 +87,22 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 
 	// Host config
 	memory_mbs := int64(cfg.Memory * 1024 * 1024)
-	cpu_cores := cfg.CPUs * 1_000_000_000
+	cpu_cores := int64(cfg.CPUs * 1_000_000_000)
 	pid_limits := int64(cfg.PIDs)
+	init_allowed := true
 
 	hostConfig := &container.HostConfig{
-		// AutoRemove:     true,                          // automatically remove when stopped
+		// AutoRemove:     true,                       // automatically remove when stopped
 		ReadonlyRootfs: true,                          // cannot change anything in root fs
 		SecurityOpt:    []string{"no-new-privileges"}, // deny privilege escalation
-		CapDrop:        []string{"ALL"},               // drop linux
+		CapDrop:        []string{"ALL"},               // drop all linux capabilitites
 		Resources: container.Resources{
 			Memory:    memory_mbs,
-			NanoCPUs:  int64(cpu_cores),
+			NanoCPUs:  cpu_cores,
 			PidsLimit: &pid_limits,
 		},
 		NetworkMode: "none", // no network
+		Init:        &init_allowed,
 		Mounts: []mount.Mount{
 			{
 				Type:   mount.TypeTmpfs,
@@ -174,13 +175,14 @@ func (d *DockerClient) GetContainerStatus(ctx context.Context, containerID strin
 	}
 }
 
-func (d *DockerClient) SessionRunJob(ctx context.Context, containerID string, cmd []string) (string, string, int, error) {
+func (d *DockerClient) SessionRunJob(ctx context.Context, containerID string, cmd []string, jobID string) (string, string, int, error) {
 
 	execConfig := container.ExecOptions{
 		Cmd:          cmd,
 		AttachStdout: true,
 		AttachStderr: true,
-		AttachStdin:  false, // no user inputs
+		AttachStdin:  false,
+		Tty:          false,
 	}
 
 	resp, err := d.APIClient.ContainerExecCreate(ctx, containerID, execConfig)
@@ -195,62 +197,43 @@ func (d *DockerClient) SessionRunJob(ctx context.Context, containerID string, cm
 	defer attach.Close()
 
 	var stdout, stderr bytes.Buffer
-	// Limit stream output to prevent excessivley large buffers
-	io.LimitReader(attach.Reader, 10<<20) // 10MB
+	limited := io.LimitReader(attach.Reader, 10<<20) // 10MB
 
-	// demux output into two streams
-	_, err = stdcopy.StdCopy(&stdout, &stderr, attach.Reader)
-	if err != nil {
-		return "", "", -1, err
+	done := make(chan error, 1)
+
+	go func() {
+		_, err := stdcopy.StdCopy(&stdout, &stderr, limited)
+		done <- err
+	}()
+
+	select {
+
+	case err := <-done:
+		if err != nil {
+			return "", "", -1, err
+		}
+
+		inspect, err := d.APIClient.ContainerExecInspect(ctx, resp.ID)
+		if err != nil {
+			return stdout.String(), stderr.String(), -1, err
+		}
+
+		if inspect.Running {
+			return stdout.String(), stderr.String(), -1, errors.New("exec stream closed early")
+		}
+
+	case <-ctx.Done():
+		// just stop reading and return
+		attach.Close()
+		<-done
+
+		return stdout.String(), stderr.String(), -1, ctx.Err()
 	}
 
-	// check for exit codes
 	inspect, err := d.APIClient.ContainerExecInspect(ctx, resp.ID)
 	if err != nil {
 		return stdout.String(), stderr.String(), -1, err
 	}
 
-	output := stdout.String()
-	errout := stderr.String()
-	exitCode := inspect.ExitCode
-
-	return output, errout, exitCode, nil
-}
-
-func (e *DockerClient) AttachWorker(sess *session.Session) {
-
-	workerCount := runtime.NumCPU()
-
-	for range workerCount {
-		go func() {
-			defer func() {
-				// recover goroutine if worker panics
-				if r := recover(); r != nil {
-					log.Printf("worker panic, error:")
-					log.Println(r)
-				}
-			}()
-
-			for job := range sess.JobHandler.Queue {
-				job.Status = session.JobRunning
-
-				// TODO: add per job timeout
-				output, errout, exitCode, err := e.SessionRunJob(context.TODO(), sess.ContainerID, job.Cmd)
-
-				job.Output.ConsoleOutput = output
-				job.Output.ErrOut = errout
-
-				if err != nil {
-					job.Status = session.JobFailed
-					job.Output.ErrOut = err.Error()
-					continue
-				}
-				if exitCode != 0 {
-					job.Status = session.JobFailed
-				} else {
-					job.Status = session.JobCompleted
-				}
-			}
-		}()
-	}
+	return stdout.String(), stderr.String(), inspect.ExitCode, nil
 }

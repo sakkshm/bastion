@@ -78,7 +78,7 @@ func main() {
 		r.Delete(api.DeleteSessionEndpoint, routeHandler.DeleteSessionHandler)
 		r.Get(api.GetSessionStatusEndpoint, routeHandler.GetSessionStatusHandler)
 
-		r.Post(api.SessionExecuteEndpoint, routeHandler.SessionExecuteHandler)
+		r.Post(api.JobExecuteEndpoint, routeHandler.JobExecuteHandler)
 		r.Get(api.GetJobStatusEndpoint, routeHandler.GetJobStatusHandler)
 	})
 

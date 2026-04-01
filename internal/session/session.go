@@ -1,6 +1,7 @@
 package session
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -53,6 +54,8 @@ type ExecJob struct {
 	Cmd       []string
 	Status    JobStatus
 	Output    ExecJobOutput
+	Context   context.Context
+	Cancel    context.CancelFunc
 	CreatedAt time.Time
 }
 
@@ -69,6 +72,8 @@ const (
 	JobRunning
 	JobCompleted
 	JobFailed
+	JobTimedout
+	JobCanceled
 )
 
 func (s JobStatus) String() string {
@@ -81,6 +86,10 @@ func (s JobStatus) String() string {
 		return "completed"
 	case JobFailed:
 		return "failed"
+	case JobTimedout:
+		return "timeout"
+	case JobCanceled:
+		return "canceled"
 	default:
 		return "unknown"
 	}

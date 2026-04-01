@@ -2,14 +2,20 @@ package api
 
 const (
 	HealthEndpoint = "/health"
+)
 
+// Session Endpoint
+const (
 	CreateSessionEndpoint    = "/session/create"
 	SessionBaseEndpoint      = "/session/{id}"
+	GetSessionStatusEndpoint = "/status"
 	StartSessionEndpoint     = "/start"
 	StopSessionEndpoint      = "/stop"
 	DeleteSessionEndpoint    = "/"
-	GetSessionStatusEndpoint = "/status"
-	SessionExecuteEndpoint   = "/exec"
-	GetSessionLogsEndpoint   = "/logs"
-	GetJobStatusEndpoint     = "/job/{job_id}"
+)
+
+// Job Endpoint
+const (
+	JobExecuteEndpoint   = "/exec"
+	GetJobStatusEndpoint = "/job/{job_id}"
 )

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -67,7 +68,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 
 	// atatch a worker to this session to execute jobs
 	h.Engine.Logger.Info("Attaching workers to session", "session_id", sess.ID)
-	h.Engine.Docker.AttachWorker(&sess)
+	h.Engine.AttachWorker(&sess)
 
 	// return session identifier to client
 	resp := CreateSessionResponse{
@@ -272,7 +273,7 @@ func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func (h *Handler) SessionExecuteHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) JobExecuteHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
@@ -303,11 +304,19 @@ func (h *Handler) SessionExecuteHandler(w http.ResponseWriter, r *http.Request) 
 	// generate job and add to queue
 	jobID := session.GenerateJobID()
 
+	// add context for timeout and cancelation
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Duration(h.Engine.Config.Sandbox.JobTTL) * time.Second,
+	)
+
 	job := &session.ExecJob{
 		JobID:     jobID,
 		Cmd:       req.Cmd,
 		Status:    session.JobQueued,
 		Output:    session.ExecJobOutput{},
+		Context:   ctx,
+		Cancel:    cancel,
 		CreatedAt: time.Now().UTC(),
 	}
 
@@ -357,7 +366,7 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: job.CreatedAt,
 	}
 
-	if job.Status == session.JobCompleted {
+	if job.Status == session.JobCompleted || job.Status == session.JobFailed {
 		resp.Output = &JobOutputResponse{
 			ConsoleOutput: job.Output.ConsoleOutput,
 			ErrOut:        job.Output.ErrOut,
