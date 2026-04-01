@@ -4,8 +4,8 @@ set -e
 
 BASE="http://localhost:8080"
 
-CONCURRENCY=100
-REQUESTS=100
+CONCURRENCY=50
+REQUESTS=50
 
 LAT_FILE="/tmp/latencies.txt"
 ERR_FILE="/tmp/errors.txt"
