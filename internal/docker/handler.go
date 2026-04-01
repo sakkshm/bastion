@@ -81,8 +81,8 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 	// Container config
 	config := &container.Config{
 		Image: cfg.Image,
-		Tty:   true,                // Allocate Terminal
-		Cmd:   []string{"/bin/sh"}, // Deafault Shell
+		Tty:   false,                         // Allocate Terminal
+		Cmd:   []string{"sleep", "infinity"}, // Deafault Shell
 	}
 
 	// Host config
@@ -105,8 +105,12 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 		Init:        &init_allowed,
 		Mounts: []mount.Mount{
 			{
-				Type:   mount.TypeTmpfs,
-				Target: "/sandbox", // ephemeral storage
+				Type:   mount.TypeTmpfs, // emphereal storage
+				Target: "/sandbox",
+				TmpfsOptions: &mount.TmpfsOptions{
+					SizeBytes: 64 * 1024 * 1024,
+					Mode:      0700,
+				},
 			},
 		},
 	}
