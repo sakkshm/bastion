@@ -2,7 +2,7 @@
 
 ### Goal:
 
-Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with sandboxed execution, resource governance, and auditability.
+Build a lightweight, self-hosted, **policy-driven workspace runtime for AI agents** with sandboxed execution, resource governance, and auditability.
 
 
 ## ~~Phase 0: Project Setup~~
@@ -14,36 +14,136 @@ Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with 
 * ~~Choose TOML parser~~
 * ~~Logging (structured JSON)~~
 
-## Phase 1: Core Execution Engine
+**Additions:**
 
-**Goal:** Run commands safely and capture output.
+* Define layered architecture early:
+
+  * API Layer
+  * Workspace Manager (Orchestration)
+  * Runtime Layer (Docker)
+  * Filesystem Layer
+  * Data Layer
+* Establish structured logging format compatible with audit + replay
+
+
+
+## Phase 1: Core Workspace Runtime
+
+**Goal:** Persistent, concurrent execution environments (replace session + queue model).
 
 **Features:**
 
 * REST API:
-    - ~~CreateSessionEndpoint  = "/session/create"~~
-    - ~~GetSessionStatusEndpoint  = "/session/{id}/status"~~
-    - ~~StartSessionEndpoint  = "/session/{id}/start"~~
-	- ~~StopSessionEndpoint  = "/session/{id}/start"~~
-	- ~~DeleteSessionEndpoint  = "/session/{id}"~~
-	- ~~SessionExecuteEndpoint = "/session/{id}/exec"~~
-* WebSocket endpoint for streaming stdout/stderr
+
+  * ~~CreateSessionEndpoint  = "/session/create"~~ → `/workspaces`
+  * ~~GetSessionStatusEndpoint  = "/session/{id}/status"~~ → `/workspaces/{id}`
+  * ~~StartSessionEndpoint  = "/session/{id}/start"~~ → `/workspaces/{id}/start`
+  * ~~StopSessionEndpoint  = "/session/{id}/start"~~ → `/workspaces/{id}/stop`
+  * ~~DeleteSessionEndpoint  = "/session/{id}"~~ → `/workspaces/{id}`
+  * ~~SessionExecuteEndpoint = "/session/{id}/exec"~~ → `/workspaces/{id}/exec`
+  * NEW: `/workspaces/{id}/exec/{exec_id}` (async only)
+  * NEW: `/workspaces/{id}/terminal` (WebSocket TTY)
+* WebSocket endpoint for:
+
+  * Streaming stdout/stderr (exec)
+  * Interactive terminal (TTY)
 * ~~Docker sandbox (default)~~
+* Persistent containers (`sleep infinity`)
 * Bare-metal mode (optional)
+* Concurrent exec per workspace (no queue)
+
+**Additions:**
+
+* Execution model explicitly supports:
+
+  * Interactive (TTY over WS)
+  * Streaming (HTTP chunked/SSE)
+  * Async (exec_id-based)
+* Each exec maps to independent Docker process (no shared execution state)
+* Workspace lifecycle is independent of execution lifecycle
+* Terminal uses bidirectional streaming + resize events
 
 **Implementation Notes (Go):**
 
-* Use `os/exec` for bare-metal execution
-* Use Docker SDK for Go (`github.com/docker/docker/client`) for sandboxed containers
+* Use Docker SDK for Go (`github.com/docker/docker/client`)
 * Use `context.Context` for timeout & cancellation
-* Stream stdout/stderr over WebSocket via `gorilla/websocket`
+* Use `ContainerExecCreate + Attach` for exec
+* Use `Tty: true` for terminal mode
+* Stream stdout/stderr via:
+
+  * WebSocket (interactive)
+  * HTTP streaming (non-interactive)
+* Maintain per-workspace:
+
+  * ContainerID
+  * Active exec counter (atomic)
+* Remove:
+
+  * Job queue
+  * Worker goroutines controlling execution
+
+**Additions:**
+
+* Enforce concurrency using atomic counters:
+
+```go
+activeExecs atomic.Int32
+maxExecs    int32
+```
+
+* Execution must be stateless:
+
+  * No shared buffers
+  * No per-workspace locks blocking exec
 
 **Test Checklist:**
 
 * [ ] Commands execute successfully in Docker containers
-* [ ] Commands execute in bare-metal mode
+* [ ] Multiple commands run concurrently in same workspace
+* [ ] Interactive terminal works (TTY + resize)
 * [ ] Timeout and CPU/memory limits enforced
-* [ ] Containers auto-cleaned after session
+* [ ] Containers persist across exec calls
+* [ ] Containers restart correctly after stop/start
+* [ ] Exec does not block other execs in same workspace
+
+
+
+## Phase 1.5: Workspace Persistence (CRITICAL)
+
+**Goal:** Survive restarts, avoid orphan containers.
+
+**Features:**
+
+* Persistent workspace store (SQLite for MVP)
+* Store:
+
+  * ID, Image, ContainerID, Status
+  * Mounts, EnvVars, CreatedAt
+* Startup reconciliation with Docker
+* Container lifecycle tracking
+
+**Additions:**
+
+* Workspace record is the **source of truth**, not container state
+
+* Containers are treated as recoverable/replaceable runtime artifacts
+
+* Reconciliation logic required:
+
+  * Missing container → mark workspace failed
+  * Orphan container → cleanup or attach
+
+* Event-driven updates via Docker events:
+
+  * start / stop / die
+
+**Test Checklist:**
+
+* [ ] Server restart preserves workspace state
+* [ ] Orphan containers detected and handled
+* [ ] Status reflects actual container state
+* [ ] Container crash updates workspace status
+
 
 
 ## Phase 2: Policy Engine
@@ -52,12 +152,22 @@ Build a lightweight, self-hosted, **policy-driven terminal for AI agents** with 
 
 **Features:**
 
-* TOML policy file
+* TOML policy file (per workspace or global)
 * Allow/deny commands
 * Workspace read/write paths
 * Network enable/disable
-* Resource limits per session
+* Resource limits per workspace
 * Policy validation endpoint (`/validate`)
+
+**Additions:**
+
+* Policy enforcement points:
+
+  * Pre-execution (command validation)
+  * Container creation (resource + network)
+  * Runtime (timeouts)
+* Policy must be deterministic and side-effect free
+* Dry-run mode simulates execution without side effects
 
 **Implementation Notes (Go):**
 
@@ -83,7 +193,11 @@ type Policy struct {
 }
 ```
 
-* Validate command against policy before execution
+* Validate command before exec (not via queue)
+* Enforce limits at:
+
+  * Container level (CPU/memory)
+  * Exec level (timeout)
 
 **Test Checklist:**
 
@@ -92,6 +206,7 @@ type Policy struct {
 * [ ] Workspace write restrictions enforced
 * [ ] Network disabled correctly
 * [ ] Dry-run simulation endpoint works
+* [ ] Policy enforcement is consistent across exec types
 
 
 
@@ -100,16 +215,26 @@ type Policy struct {
 **Features:**
 
 * Workspace-scoped file access
+* Bind-mounted host directories (`/var/workspaces/{id}`)
 * Upload, Download, Delete files
 * List directories
 * Optional search
 * Enforce workspace scoping
 
+**Additions:**
+
+* Filesystem guarantees:
+
+  * Persistence across restarts
+  * Isolation per workspace
+  * No directory traversal
+* Bind mounts preferred for MVP (debuggability over abstraction)
+
 **Go Notes:**
 
-* Use `io/ioutil` / `os` for file ops
-* Validate paths to ensure they stay within workspace
-* Optional search via `filepath.WalkDir`
+* Use `os` / `io` for file ops
+* Validate paths (no escape outside workspace)
+* Use bind mounts instead of volumes (MVP simplicity)
 
 **Test Checklist:**
 
@@ -117,7 +242,9 @@ type Policy struct {
 * [ ] Cannot escape workspace
 * [ ] Directory listing works
 * [ ] Download returns correct content
+* [ ] Files persist across container restarts
 * [ ] Delete removes files
+* [ ] Path traversal attacks blocked
 
 
 
@@ -127,14 +254,32 @@ type Policy struct {
 
 * JSON structured logs
 * Query logs via REST API (`/logs`)
+* Execution metadata:
+
+  * Command
+  * Exit code
+  * Duration
+  * Resource usage
 * Replay execution metadata
 * Log rotation support (`lumberjack` or custom)
+
+**Additions:**
+
+* Logs must include:
+
+  * Policy decision (allow/deny)
+  * Workspace ID
+  * Exec ID
+* Logging must not block execution path (async or buffered)
+* Replay is metadata-based (non-deterministic for MVP)
 
 **Test Checklist:**
 
 * [ ] Logs include resource usage and policy decision
-* [ ] Replay session reproduces execution
+* [ ] Replay session reproduces execution metadata
 * [ ] Log rotation works
+* [ ] Exec + terminal events logged
+* [ ] Logs are consistent across restart
 
 
 
@@ -144,20 +289,27 @@ type Policy struct {
 
 * API key auth
 * Roles: `admin`, `agent`, `viewer`
-* Admin: modify policy, view logs
-* Agent: execute commands
+* Admin: modify policy, manage workspaces, view logs
+* Agent: execute commands, use terminal
 * Viewer: read-only
+
+**Additions:**
+
+* Auth enforced at API layer via middleware
+* Role-based restrictions applied per endpoint
+* Future extension: multi-tenant isolation
 
 **Go Notes:**
 
-* Use middleware in Gin/Chi/Fiber to check API key & role
-* Store keys in config or database (e.g., SQLite for hackathon)
+* Use middleware in Chi to enforce auth
+* Store keys in config or database (SQLite for MVP)
 
 **Test Checklist:**
 
 * [ ] Role enforcement works correctly
 * [ ] API key rotation works
 * [ ] Unauthorized access blocked
+* [ ] Terminal access restricted correctly
 
 
 
@@ -169,7 +321,20 @@ type Policy struct {
 * Environment variables
 * Config files (`~/.config/bastion/config.toml`)
 * Docker deployment
-* Pip / uvx analog: `go build` or `go install`
+* Custom Docker image support (user-provided)
+* `go build` / `go install`
+
+**Additions:**
+
+* Config precedence:
+
+  ```
+  CLI > Env > Config file > Defaults
+  ```
+
+* Workspace image must be configurable per request
+
+* Deployment must support reproducible environments
 
 **Test Checklist:**
 
@@ -177,6 +342,8 @@ type Policy struct {
 * [ ] Env vars override defaults
 * [ ] Docker deployment works
 * [ ] Custom Dockerfile supported
+* [ ] Workspace image selection works
+* [ ] Config precedence works correctly
 
 
 
@@ -184,42 +351,60 @@ type Policy struct {
 
 **Features:**
 
+* Async exec jobs (background tasks only)
 * Replay sessions deterministically
-* Capability profiles
+* Capability profiles (predefined policies)
 * Dry-run simulation
 * CPU/memory benchmarks
 * WebSocket streaming performance test
+* Container pooling (optional optimization)
+
+**Additions:**
+
+* Container pooling:
+
+  * Pre-warmed containers for low latency
+  * Optional optimization (not required for MVP)
+* Async jobs must not affect interactive execution path
 
 **Test Checklist:**
 
+* [ ] Async exec works with polling
 * [ ] Replay sessions reproduce output
 * [ ] Profiles enforce limits
 * [ ] Dry-run blocks destructive commands
 * [ ] Streaming works reliably
+* [ ] Pooling improves startup latency (if implemented)
 
 
 
 ## MVP Feature List (Golang Edition)
 
 | Feature Category    | Feature                                                                                                                          |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Core Execution      | REST execution, WebSocket streaming, Docker sandbox, Bare-metal mode, Workspace-scoped file API                                  |
+| - | -- |
+| Core Execution      | Workspace lifecycle, concurrent exec, WebSocket terminal, Docker sandbox, Bare-metal mode, Workspace-scoped file API             |
 | Governance          | TOML policies, Command allow/deny, Filesystem scoping, Network toggle, CPU/memory limits, Timeout enforcement, Policy simulation |
 | Observability       | JSON audit logs, Resource tracking, Execution metadata, Replay-ready sessions                                                    |
 | Deployment & Config | Single Docker command, Go build/install, Config hierarchy, Custom Docker image support                                           |
 | Security & Access   | API key auth, Role-based access (`admin`, `agent`, `viewer`)                                                                     |
-| Optional / Bonus    | Deterministic replay, Capability profiles, Dry-run simulation, Benchmarks, Streaming tests                                       |
+| Optional / Bonus    | Async exec, Deterministic replay, Capability profiles, Dry-run simulation, Benchmarks, Streaming tests                           |
 
----
 
-## Hackathon Submission Checklist 
 
-- Clean architecture diagram
-- REST + WebSocket endpoints documented
-- Sample policy files included
-- Demo workflow: upload file, run command, stream output, check logs
-- CLI + Docker instructions
-- Clear README + non-goals section
-- Prebuilt Docker image
-- Automated tests (policy, execution, files, auth)
+## Hackathon Submission Checklist
 
+* Clean architecture diagram (**workspace-based, no queue**)
+* REST + WebSocket endpoints documented
+* Sample policy files included
+* Demo workflow: create workspace → upload file → exec → terminal → check logs
+* CLI + Docker instructions
+* Clear README + non-goals section
+* Prebuilt Docker image
+* Automated tests (policy, execution, files, auth)
+
+**Additions:**
+
+* Demonstrate concurrent exec (multiple commands running simultaneously)
+* Demonstrate terminal interaction (TTY)
+* Show restart recovery (workspace persistence)
+* Include failure scenarios (container crash, timeout)
