@@ -328,7 +328,7 @@ func (h *Handler) JobExecuteHandler(w http.ResponseWriter, r *http.Request) {
 	// touch session
 	h.Engine.Sessions.Touch(sess.ID)
 
-	json.NewEncoder(w).Encode(JobExecResponse{
+	_ = json.NewEncoder(w).Encode(JobExecResponse{
 		JobID:  job.JobID,
 		Status: session.JobQueued.String(),
 	})
@@ -374,6 +374,6 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	_ = json.NewEncoder(w).Encode(resp)
 
 }
