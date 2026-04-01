@@ -26,6 +26,10 @@ func (c *Config) Validate() error {
 		return errors.New("execution.session_ttl_minutes must be > 0")
 	}
 
+	if c.Execution.SessionCleanupIntervalSec <= 0 {
+		return errors.New("execution.session_cleanup_interval_sec must be > 0")
+	}
+
 	if c.Execution.WorkingDirectoryBase == "" {
 		return errors.New("execution.working_directory_base cannot be empty")
 	}

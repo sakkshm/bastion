@@ -17,6 +17,7 @@ type ExecutionConfig struct {
 	Mode                 string `toml:"mode"` // sandbox | bare_metal
 	MaxConcurrent        int    `toml:"max_concurrent_sessions"`
 	SessionTTLMinutes    int    `toml:"session_ttl_minutes"`
+	SessionCleanupIntervalSec    int    `toml:"session_cleanup_interval_sec"`
 	WorkingDirectoryBase string `toml:"working_directory_base"`
 }
 
@@ -42,6 +43,10 @@ type LoggingConfig struct {
 }
 
 func (c *Config) applyDefaults() {
+	if c.Execution.SessionCleanupIntervalSec == 0 {
+		c.Execution.SessionCleanupIntervalSec = 30
+	}
+	
 	if c.Server.Host == "" {
 		c.Server.Host = "0.0.0.0"
 	}

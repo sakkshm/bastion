@@ -16,6 +16,10 @@ type Session struct {
 	JobHandler  *JobHandler
 }
 
+func (s Session) IsExpired(ttl time.Duration) bool {
+	return time.Since(s.LastUsedAt) > ttl  || s.Status == StatusDeleted
+}
+
 type Status int
 
 const (

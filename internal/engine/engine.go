@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/sakkshm/bastion/internal/config"
 	"github.com/sakkshm/bastion/internal/docker"
@@ -31,12 +32,19 @@ func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 		return nil, err
 	}
 
-	return &Engine{
+	e := Engine{
 		Sessions: session.NewSessionManager(),
 		Docker:   dockerClient,
 		Logger:   logger,
 		Config:   cfg,
-	}, nil
+	}
+
+	e.StartSessionGarbageCollector(
+		time.Duration(cfg.Execution.SessionCleanupIntervalSec)*time.Second,
+		time.Duration(cfg.Execution.SessionTTLMinutes)*time.Minute,
+	)
+
+	return &e, nil
 }
 
 func (e *Engine) Close() error {
@@ -94,4 +102,36 @@ func (e *Engine) AttachWorker(sess *session.Session) {
 			}
 		}()
 	}
+}
+
+func (e *Engine) StartSessionGarbageCollector(interval time.Duration, ttl time.Duration) {
+	ticker := time.NewTicker(interval)
+
+	go func() {
+		for range ticker.C {
+			e.cleanupSessions(ttl)
+		}
+	}()
+}
+
+func (e *Engine) cleanupSessions(ttl time.Duration) {
+	snapshot := e.Sessions.Snapshot()
+	var toDelete []string
+	var toDeleteContainer []string
+
+	for id, session := range snapshot {
+		if session.IsExpired(ttl) {
+			toDelete = append(toDelete, id)
+			toDeleteContainer = append(toDeleteContainer, session.ContainerID)
+		}
+	}
+
+	// delete from SessionManager
+	e.Sessions.BatchDelete(toDelete)
+
+	// delete conatiners from Docker daemon
+	for _, containerID := range toDeleteContainer {
+		_ = e.Docker.DeleteContainer(context.Background(), containerID)
+	}
+
 }

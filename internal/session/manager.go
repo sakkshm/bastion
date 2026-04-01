@@ -1,6 +1,7 @@
 package session
 
 import (
+	"maps"
 	"sync"
 	"time"
 )
@@ -36,6 +37,14 @@ func (sm *SessionManager) Delete(id string) {
 	delete(sm.sessions, id)
 }
 
+func (sm *SessionManager) BatchDelete(toDelete []string) {
+	sm.mu.Lock()
+	for _, id := range toDelete {
+		delete(sm.sessions, id)
+	}
+	sm.mu.Unlock()
+}
+
 func (sm *SessionManager) Count() int {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -59,4 +68,14 @@ func (sm *SessionManager) UpdateStatus(id string, status Status) {
 	if s, ok := sm.sessions[id]; ok {
 		s.Status = status
 	}
+}
+
+func (sm *SessionManager) Snapshot() map[string]*Session {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	cp := make(map[string]*Session, len(sm.sessions))
+	maps.Copy(cp, sm.sessions)
+
+	return cp
 }
