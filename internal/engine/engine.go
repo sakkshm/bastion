@@ -117,21 +117,21 @@ func (e *Engine) StartSessionGarbageCollector(interval time.Duration, ttl time.D
 func (e *Engine) cleanupSessions(ttl time.Duration) {
 	snapshot := e.Sessions.Snapshot()
 	var toDelete []string
-	var toDeleteContainer []string
+	var toDeleteSessions []*session.Session
 
 	for id, session := range snapshot {
 		if session.IsExpired(ttl) {
 			toDelete = append(toDelete, id)
-			toDeleteContainer = append(toDeleteContainer, session.ContainerID)
+			toDeleteSessions = append(toDeleteSessions, session)
 		}
 	}
 
 	// delete from SessionManager
 	e.Sessions.BatchDelete(toDelete)
 
-	// delete conatiners from Docker daemon
-	for _, containerID := range toDeleteContainer {
-		_ = e.Docker.DeleteContainer(context.Background(), containerID)
+	// delete containers from Docker daemon and kill wsManager
+	for _, session := range toDeleteSessions {
+		_ = e.Docker.DeleteContainer(context.Background(), session.ContainerID)
+		session.WSManager.Cancel()
 	}
-
 }
