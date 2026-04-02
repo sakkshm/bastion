@@ -19,3 +19,8 @@ const (
 	JobExecuteEndpoint   = "/exec"
 	GetJobStatusEndpoint = "/job/{job_id}"
 )
+
+// WS Terminal Endpoint
+const (
+	TerminalEndpoint = "/terminal"
+)

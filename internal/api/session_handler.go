@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sakkshm/bastion/internal/docker"
 	"github.com/sakkshm/bastion/internal/session"
+	"github.com/sakkshm/bastion/internal/websocket"
 )
 
 func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
@@ -56,6 +57,10 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	// make a new job handler
 	jobHandler := session.NewJobHandler()
 
+	// make a new WSManager
+	wsManager := websocket.NewWSManager(sessionID)
+	go wsManager.Run()
+
 	sess := session.Session{
 		ID:          sessionID,
 		ContainerID: containerID,
@@ -63,6 +68,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 		LastUsedAt:  now,
 		Status:      session.StatusCreated,
 		JobHandler:  jobHandler,
+		WSManager:   wsManager,
 	}
 	h.Engine.Sessions.Add(&sess)
 
@@ -376,4 +382,35 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	_ = json.NewEncoder(w).Encode(resp)
 
+}
+
+func (h *Handler) TerminalHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
+	if !ok {
+		writeJSONError(w, http.StatusInternalServerError, "session context missing")
+		return
+	}
+
+	h.Engine.Sessions.Touch(sess.ID)
+
+	conn, err := websocket.Upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		h.Engine.Logger.Error(
+			"failed to upgrade websocket conn",
+			"session_id", sess.ID,
+			"error", err,
+		)
+		writeJSONError(w, http.StatusInternalServerError, "failed to upgrade websocket conn")
+		return
+	}
+
+	client := websocket.NewClient(conn, sess.ID)
+
+	sess.WSManager.Register <- client
+
+	go client.WritePump()
+	go client.ReadPump(sess.WSManager)
 }

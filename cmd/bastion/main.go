@@ -80,6 +80,9 @@ func main() {
 
 		r.Post(api.JobExecuteEndpoint, routeHandler.JobExecuteHandler)
 		r.Get(api.GetJobStatusEndpoint, routeHandler.GetJobStatusHandler)
+
+		// WS terminal endpoint
+		r.Get(api.TerminalEndpoint, routeHandler.TerminalHandler)
 	})
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)

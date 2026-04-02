@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sakkshm/bastion/internal/websocket"
 )
 
 type Session struct {
@@ -14,10 +15,11 @@ type Session struct {
 	LastUsedAt  time.Time
 	Status      Status
 	JobHandler  *JobHandler
+	WSManager   *websocket.WSManager
 }
 
 func (s Session) IsExpired(ttl time.Duration) bool {
-	return time.Since(s.LastUsedAt) > ttl  || s.Status == StatusDeleted
+	return time.Since(s.LastUsedAt) > ttl || s.Status == StatusDeleted
 }
 
 type Status int
