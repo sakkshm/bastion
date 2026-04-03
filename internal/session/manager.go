@@ -1,9 +1,12 @@
 package session
 
 import (
+	"fmt"
 	"maps"
 	"sync"
 	"time"
+
+	"github.com/sakkshm/bastion/internal/websocket"
 )
 
 type SessionManager struct {
@@ -78,4 +81,18 @@ func (sm *SessionManager) Snapshot() map[string]*Session {
 	maps.Copy(cp, sm.sessions)
 
 	return cp
+}
+
+func (sm *SessionManager) AddTerminalSession(id string, term *websocket.TerminalSession) error {
+
+	sess, ok := sm.Get(id);
+	if !ok {
+		return fmt.Errorf("session not found")
+	}
+
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	sess.WSManager.TerminalSession = *term;
+	return nil
 }

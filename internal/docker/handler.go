@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
@@ -80,9 +81,11 @@ func (d *DockerClient) PrefetchImage(imageName string, logger *slog.Logger) erro
 func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg ContainerConfig, sessionID string) (string, error) {
 	// Container config
 	config := &container.Config{
-		Image: cfg.Image,
-		Tty:   false,                         // Allocate Terminal
-		Cmd:   []string{"sleep", "infinity"}, // Deafault Shell
+		Image:     cfg.Image,
+		OpenStdin: true,
+		StdinOnce: false,                         // keep stdin open for terminal
+		Tty:       true,                          // Allocate Terminal
+		Cmd:       []string{"sleep", "infinity"}, // Deafault Shell
 	}
 
 	// Host config
@@ -183,6 +186,7 @@ func (d *DockerClient) SessionRunJob(ctx context.Context, containerID string, cm
 
 	execConfig := container.ExecOptions{
 		Cmd:          cmd,
+		Privileged:   false,
 		AttachStdout: true,
 		AttachStderr: true,
 		AttachStdin:  false,
@@ -240,4 +244,30 @@ func (d *DockerClient) SessionRunJob(ctx context.Context, containerID string, cm
 	}
 
 	return stdout.String(), stderr.String(), inspect.ExitCode, nil
+}
+
+func (d *DockerClient) StartTerminalSession(ctx context.Context, containerID string) (types.HijackedResponse, error) {
+
+	// start a shell process
+	execResp, err := d.APIClient.ContainerExecCreate(ctx, containerID, container.ExecOptions{
+		Cmd:          []string{"/bin/sh", "-i"},
+		Privileged:   false,
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          true,
+	})
+	if err != nil {
+		return types.HijackedResponse{}, err
+	}
+
+	// attach to container with TTY
+	resp, err := d.APIClient.ContainerExecAttach(ctx, execResp.ID, container.ExecAttachOptions{
+		Tty: true,
+	})
+	if err != nil {
+		return types.HijackedResponse{}, err
+	}
+
+	return resp, err
 }

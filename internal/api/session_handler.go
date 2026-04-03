@@ -313,7 +313,7 @@ func (h *Handler) JobExecuteHandler(w http.ResponseWriter, r *http.Request) {
 	// add context for timeout and cancelation
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		time.Duration(h.Engine.Config.Sandbox.JobTTL) * time.Second,
+		time.Duration(h.Engine.Config.Sandbox.JobTTL)*time.Second,
 	)
 
 	job := &session.ExecJob{
@@ -396,6 +396,46 @@ func (h *Handler) TerminalHandler(w http.ResponseWriter, r *http.Request) {
 
 	h.Engine.Sessions.Touch(sess.ID)
 
+	// start terminal session if not already started
+	if !sess.WSManager.TerminalSession.IsConnected {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		resp, err := h.Engine.Docker.StartTerminalSession(ctx, sess.ContainerID)
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "unable to start terminal session")
+			cancel()
+			return
+		}
+
+		termSess := websocket.TerminalSession{
+			TerminalResp: resp,
+			IsConnected:  true,
+			Input:        make(chan websocket.WSTermInputMsg),
+			Output:       make(chan websocket.WSTermOutputMsg),
+			Ctx:          ctx,
+			Cancel:       cancel,
+		}
+
+		err = h.Engine.Sessions.AddTerminalSession(sess.ID, &termSess)
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "unable to start terminal session")
+			cancel()
+			return
+		}
+
+		newSess, ok := h.Engine.Sessions.Get(sess.ID)
+		if !ok {
+			writeJSONError(w, http.StatusInternalServerError, "unable to find session")
+			cancel()
+			return
+		}
+
+		// start pumps
+		newSess.WSManager.TerminalSession.Start()
+		go newSess.WSManager.TermToWSPump()
+	}
+
+	// register a client
 	conn, err := websocket.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.Engine.Logger.Error(
