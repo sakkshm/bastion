@@ -13,6 +13,8 @@ import (
 type WSManager struct {
 	SessionID string
 
+	TerminalSession TerminalSession
+
 	Clients map[string]*Client
 
 	Broadcast chan WSMessage // outgoing messages
@@ -113,6 +115,8 @@ func (ws *WSManager) Run() {
 			ws.mu.RUnlock()
 
 			for _, client := range clients {
+				msg.ClientID = client.ClientID
+
 				select {
 				case client.Send <- msg:
 				default:
@@ -143,7 +147,9 @@ func (ws *WSManager) handleIncoming(msg WSMessage) {
 	client, ok := ws.Clients[msg.ClientID]
 	ws.mu.RUnlock()
 
-	if !ok { return }
+	if !ok {
+		return
+	}
 	if msg.SessionID != ws.SessionID {
 		client.WriteErrToClient(fmt.Errorf("inavlid session id"))
 		return
@@ -157,16 +163,11 @@ func (ws *WSManager) handleIncoming(msg WSMessage) {
 		}
 		_ = json.Unmarshal(msg.Payload, &data)
 
-		fmt.Println("terminal:", data.Input)
-
-	case MsgExec:
-		var data struct {
-			Cmd string `json:"cmd"`
+		termInput := WSTermInputMsg{
+			Input: data.Input,
 		}
 
-		_ = json.Unmarshal(msg.Payload, &data)
-
-		fmt.Println("exec:", data.Cmd)
+		ws.TerminalSession.Input <- termInput
 
 	default:
 		ws.mu.RLock()
@@ -176,5 +177,41 @@ func (ws *WSManager) handleIncoming(msg WSMessage) {
 			return
 		}
 		client.WriteErrToClient(fmt.Errorf("inavlid msg type"))
+	}
+}
+
+func (ws *WSManager) TermToWSPump() {
+	for {
+		select {
+		case <-ws.Ctx.Done():
+			return
+
+		case msg, ok := <-ws.TerminalSession.Output:
+			if !ok {
+				return
+			}
+
+			data := WSTermOutputMsg{
+				Output: string(msg.Output),
+			}
+
+			jsonOut, err := json.Marshal(data)
+			if err != nil {
+				continue
+			}
+
+			outputMsg := WSMessage{
+				Type:      MsgTerminalOutput,
+				ClientID:  "",
+				SessionID: ws.SessionID,
+				Payload:   jsonOut,
+			}
+
+			select {
+			case ws.Broadcast <- outputMsg:
+			case <-ws.Ctx.Done():
+				return
+			}
+		}
 	}
 }
