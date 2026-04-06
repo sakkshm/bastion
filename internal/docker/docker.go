@@ -2,6 +2,7 @@ package docker
 
 import (
 	"github.com/docker/docker/client"
+	"github.com/sakkshm/bastion/internal/filesystem"
 )
 
 type DockerClient struct {
@@ -14,4 +15,5 @@ type ContainerConfig struct {
 	CPUs           float32
 	PIDs           int
 	NetworkEnabled bool
+	FileSystem     filesystem.FSWorkspace
 }

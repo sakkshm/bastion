@@ -81,11 +81,19 @@ func (d *DockerClient) PrefetchImage(imageName string, logger *slog.Logger) erro
 func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg ContainerConfig, sessionID string) (string, error) {
 	// Container config
 	config := &container.Config{
-		Image:     cfg.Image,
-		OpenStdin: true,
-		StdinOnce: false,                         // keep stdin open for terminal
-		Tty:       true,                          // Allocate Terminal
-		Cmd:       []string{"sleep", "infinity"}, // Deafault Shell
+		Image:        cfg.Image,
+		Tty:          true, // Allocate Terminal
+		OpenStdin:    true,
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		StdinOnce:    false,                         // keep stdin open for terminal
+		Cmd:          []string{"sleep", "infinity"}, // Deafault Shell
+		WorkingDir:   "/workspace",
+		User:         "1000:1000",
+		Labels: map[string]string{
+			"session_id": sessionID,
+		},
 	}
 
 	// Host config
@@ -93,6 +101,11 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 	cpu_cores := int64(cfg.CPUs * 1_000_000_000)
 	pid_limits := int64(cfg.PIDs)
 	init_allowed := true
+
+	// check if fs exists
+	if !cfg.FileSystem.FSExists() {
+		return "", fmt.Errorf("workspace missing")
+	}
 
 	hostConfig := &container.HostConfig{
 		// AutoRemove:     true,                       // automatically remove when stopped
@@ -108,8 +121,16 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 		Init:        &init_allowed,
 		Mounts: []mount.Mount{
 			{
-				Type:   mount.TypeTmpfs, // emphereal storage
-				Target: "/sandbox",
+				Type:   mount.TypeBind,
+				Source: cfg.FileSystem.Mount,
+				Target: "/workspace",
+				BindOptions: &mount.BindOptions{
+					Propagation: mount.PropagationRPrivate,
+				},
+			},
+			{
+				Type:   mount.TypeTmpfs,
+				Target: "/tmp",
 				TmpfsOptions: &mount.TmpfsOptions{
 					SizeBytes: 64 * 1024 * 1024,
 					Mode:      0700,
