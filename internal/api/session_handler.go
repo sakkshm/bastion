@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sakkshm/bastion/internal/docker"
+	"github.com/sakkshm/bastion/internal/filesystem"
 	"github.com/sakkshm/bastion/internal/session"
 	"github.com/sakkshm/bastion/internal/websocket"
 )
@@ -26,6 +27,18 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	// generate session ID
 	sessionID := session.GenerateSessionID()
 
+	// make an FSWorkspace
+	filesystem, err := filesystem.NewFSWorkspace(*h.Engine.Config, sessionID)
+	if err != nil {
+		h.Engine.Logger.Error(
+			"Failed to create filesystem for container",
+			"session_id", sessionID,
+			"error", err,
+		)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create filesystem for container")
+		return
+	}
+
 	// create a container
 	containerConfig := docker.ContainerConfig{
 		Image:          h.Engine.Config.Sandbox.Image,
@@ -33,6 +46,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 		CPUs:           h.Engine.Config.Sandbox.CPUs,
 		PIDs:           h.Engine.Config.Sandbox.PIDs,
 		NetworkEnabled: h.Engine.Config.Sandbox.NetworkEnabled,
+		FileSystem:     *filesystem,
 	}
 
 	containerID, err := h.Engine.Docker.CreateSandboxContainer(
@@ -69,6 +83,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 		Status:      session.StatusCreated,
 		JobHandler:  jobHandler,
 		WSManager:   wsManager,
+		FileSystem:  filesystem,
 	}
 	h.Engine.Sessions.Add(&sess)
 

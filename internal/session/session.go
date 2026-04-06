@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sakkshm/bastion/internal/filesystem"
 	"github.com/sakkshm/bastion/internal/websocket"
 )
 
@@ -16,6 +17,7 @@ type Session struct {
 	Status      Status
 	JobHandler  *JobHandler
 	WSManager   *websocket.WSManager
+	FileSystem  *filesystem.FSWorkspace
 }
 
 func (s Session) IsExpired(ttl time.Duration) bool {
