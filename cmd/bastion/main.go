@@ -73,11 +73,13 @@ func main() {
 	r.Route(api.SessionBaseEndpoint, func(r chi.Router) {
 		r.Use(routeHandler.SessionMiddleware)
 
+		// Session Endpoints
 		r.Post(api.StartSessionEndpoint, routeHandler.StartSessionHandler)
 		r.Post(api.StopSessionEndpoint, routeHandler.StopSessionHandler)
 		r.Delete(api.DeleteSessionEndpoint, routeHandler.DeleteSessionHandler)
 		r.Get(api.GetSessionStatusEndpoint, routeHandler.GetSessionStatusHandler)
 
+		// Job endpoints
 		r.Post(api.JobExecuteEndpoint, routeHandler.JobExecuteHandler)
 		r.Get(api.GetJobStatusEndpoint, routeHandler.GetJobStatusHandler)
 
