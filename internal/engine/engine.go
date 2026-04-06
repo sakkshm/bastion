@@ -129,9 +129,30 @@ func (e *Engine) cleanupSessions(ttl time.Duration) {
 	// delete from SessionManager
 	e.Sessions.BatchDelete(toDelete)
 
-	// delete containers from Docker daemon and kill wsManager
+	// delete containers related data
 	for _, session := range toDeleteSessions {
-		_ = e.Docker.DeleteContainer(context.Background(), session.ContainerID)
+
+		// delete docker container
+		err := e.Docker.DeleteContainer(context.Background(), session.ContainerID)
+		if err != nil {
+			e.Logger.Error(
+				"Unable to delete docker conatiner for a session",
+				"session_id", session.ID,
+				"conatiner_id", session.ContainerID,
+			)
+		}
+
+		// disconnect all clients
 		session.WSManager.Cancel()
+
+		// delete fs workspace
+		err = session.FileSystem.DeleteWorkspace()
+		if err != nil {
+			e.Logger.Error(
+				"Unable to delete fs workspace for a session",
+				"session_id", session.ID,
+			)
+		}
 	}
+
 }
