@@ -26,6 +26,9 @@ cpus = 0.5
 pids = 128
 job_ttl = 5
 
+[filesystem]
+max_upload_size_mbs = 10
+
 [logging]
 level = "info"
 format = "text"    

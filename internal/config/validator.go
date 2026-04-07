@@ -77,6 +77,11 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	// File System
+	if c.FileSystem.MaxUploadSize <= 0 {
+		return errors.New("filesystem.max_upload_size_mbs must be > 0")
+	}
+
 	//  Logging
 	switch c.Logging.Level {
 	case "debug", "info", "warn", "error":

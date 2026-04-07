@@ -1,11 +1,12 @@
 package config
 
 type Config struct {
-	Server    ServerConfig
-	Execution ExecutionConfig
-	BareMetal BareMetalConfig `toml:"bare_metal"`
-	Sandbox   SandboxConfig
-	Logging   LoggingConfig
+	Server     ServerConfig
+	Execution  ExecutionConfig
+	BareMetal  BareMetalConfig `toml:"bare_metal"`
+	Sandbox    SandboxConfig
+	FileSystem FileSystemConfig
+	Logging    LoggingConfig
 }
 
 type ServerConfig struct {
@@ -14,11 +15,11 @@ type ServerConfig struct {
 }
 
 type ExecutionConfig struct {
-	Mode                 string `toml:"mode"` // sandbox | bare_metal
-	MaxConcurrent        int    `toml:"max_concurrent_sessions"`
-	SessionTTLMinutes    int    `toml:"session_ttl_minutes"`
-	SessionCleanupIntervalSec    int    `toml:"session_cleanup_interval_sec"`
-	WorkingDirectoryBase string `toml:"working_directory_base"`
+	Mode                      string `toml:"mode"` // sandbox | bare_metal
+	MaxConcurrent             int    `toml:"max_concurrent_sessions"`
+	SessionTTLMinutes         int    `toml:"session_ttl_minutes"`
+	SessionCleanupIntervalSec int    `toml:"session_cleanup_interval_sec"`
+	WorkingDirectoryBase      string `toml:"working_directory_base"`
 }
 
 type BareMetalConfig struct {
@@ -36,6 +37,11 @@ type SandboxConfig struct {
 	JobTTL         int     `toml:"job_ttl"`
 }
 
+type FileSystemConfig struct {
+	MaxUploadSize        int    `toml:"max_upload_size_mbs"`
+}
+
+
 type LoggingConfig struct {
 	Level  string `toml:"level"`  // debug | info | warn | error
 	Format string `toml:"format"` // json | text
@@ -46,7 +52,7 @@ func (c *Config) applyDefaults() {
 	if c.Execution.SessionCleanupIntervalSec == 0 {
 		c.Execution.SessionCleanupIntervalSec = 30
 	}
-	
+
 	if c.Server.Host == "" {
 		c.Server.Host = "0.0.0.0"
 	}
