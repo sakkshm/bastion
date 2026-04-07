@@ -24,3 +24,9 @@ const (
 const (
 	TerminalEndpoint = "/terminal"
 )
+
+// FileSystem Endpoints
+const (
+	UploadEndpoint = "/upload"
+	DownloadEndpoint = "/download"
+)

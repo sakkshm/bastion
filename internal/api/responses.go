@@ -47,6 +47,11 @@ type JobOutputResponse struct {
 	StatusCode    int    `json:"status_code"`
 }
 
+type FileUploadResponse struct {
+	Status string `json:"status"`
+	Path   string `json:"path"`
+}
+
 type APIError struct {
 	Error string `json:"error"`
 }

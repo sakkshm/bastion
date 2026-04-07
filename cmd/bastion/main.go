@@ -85,6 +85,10 @@ func main() {
 
 		// WS terminal endpoint
 		r.Get(api.TerminalEndpoint, routeHandler.TerminalHandler)
+
+		// Filesystem endpoint
+		r.Post(api.UploadEndpoint, routeHandler.UploadHandler)
+		r.Get(api.DownloadEndpoint, routeHandler.DownloadHandler)
 	})
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
