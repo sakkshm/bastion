@@ -89,33 +89,47 @@ func (fs *FSWorkspace) DeleteWorkspace() error {
 }
 
 func (fs *FSWorkspace) SafePath(rel string) (string, error) {
-	full := filepath.Join(fs.Mount, rel)
-	full = filepath.Clean(full)
 
-	// Basic prefix check (existing)
-	if !strings.HasPrefix(full, fs.Mount+string(os.PathSeparator)) {
-		return "", fmt.Errorf("invalid path")
-	}
+    // Normalize input
+    rel = filepath.Clean("/" + rel)
+    rel = strings.TrimPrefix(rel, "/")
 
-	// symlink resolution
-	resolved, err := filepath.EvalSymlinks(full)
-	if err != nil {
-		return "", fmt.Errorf("invalid path")
-	}
+    full := filepath.Join(fs.Mount, rel)
+    full = filepath.Clean(full)
 
-	// Resolve mount as well
-	mountResolved, err := filepath.EvalSymlinks(fs.Mount)
-	if err != nil {
-		return "", fmt.Errorf("invalid mount")
-	}
+    // Resolve mount once
+    mountResolved, err := filepath.EvalSymlinks(fs.Mount)
+    if err != nil {
+        return "", fmt.Errorf("invalid mount")
+    }
 
-	// Ensure resolved path is still inside mount
-	if !strings.HasPrefix(resolved, mountResolved+string(os.PathSeparator)) &&
-		resolved != mountResolved {
-		return "", fmt.Errorf("path escapes sandbox")
-	}
+    // ROOT CASE
+    if full == fs.Mount {
+        return mountResolved, nil
+    }
 
-	return resolved, nil
+    // Pre-check (cheap containment)
+    relPath, err := filepath.Rel(mountResolved, full)
+    if err != nil || strings.HasPrefix(relPath, "..") {
+        return "", fmt.Errorf("invalid path")
+    }
+
+    // Resolve symlinks ONLY if path exists
+    resolved := full
+    if _, err := os.Lstat(full); err == nil {
+        resolved, err = filepath.EvalSymlinks(full)
+        if err != nil {
+            return "", fmt.Errorf("invalid path")
+        }
+    }
+
+    // Final containment check
+    relPath, err = filepath.Rel(mountResolved, resolved)
+    if err != nil || strings.HasPrefix(relPath, "..") {
+        return "", fmt.Errorf("path escapes sandbox")
+    }
+
+    return resolved, nil
 }
 
 func (fs FSWorkspace) FSExists() bool {
@@ -124,4 +138,53 @@ func (fs FSWorkspace) FSExists() bool {
 	}
 
 	return true
+}
+
+func (fs *FSWorkspace) ListWorkspace(path string) ([]FileEntry, error) {
+
+	listDirPath, err := fs.SafePath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// check if dir exists
+	info, err := os.Stat(listDirPath)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() {
+		return nil, errors.New("not a directory")
+	}
+
+	entries, err := os.ReadDir(listDirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo := make([]FileEntry, 0, len(entries))
+
+	for _, e := range entries {
+
+		// skip symlink
+		if e.Type()&os.ModeSymlink != 0 {
+			continue
+		}
+
+		var file = FileEntry{
+			Name:  e.Name(),
+			IsDir: e.IsDir(),
+		}
+
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		file.Size = info.Size()
+		file.Mode = info.Mode().String()
+		file.ModTime = info.ModTime()
+
+		fileInfo = append(fileInfo, file)
+	}
+
+	return fileInfo, nil
 }

@@ -15,3 +15,7 @@ type DownloadRequest struct {
 type DeleteRequest struct {
     Path string `json:"path"`
 }
+
+type ListFileRequest struct {
+    Path string `json:"path"`
+}

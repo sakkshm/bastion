@@ -232,7 +232,7 @@ func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// Update session data
 	h.Engine.Sessions.Touch(sess.ID)
 
-	// extract query param into struct
+	// extract body into struct
 	var req DeleteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "invalid request body")
@@ -307,4 +307,92 @@ func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(FileDeleteResponse{
 		Status: "deleted successfully",
 	})
+}
+
+func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/json")
+
+	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
+	if !ok {
+		writeJSONError(w, http.StatusInternalServerError, "session context missing")
+		return
+	}
+
+	// Update session data
+	h.Engine.Sessions.Touch(sess.ID)
+
+	// extract query params into struct
+	var req ListFileRequest
+	req.Path = r.URL.Query().Get("path")
+
+	if req.Path == "" {
+		writeJSONError(w, http.StatusBadRequest, "path required")
+		return
+	}
+
+	// check if safe
+	req.Path = filepath.Clean(req.Path)
+	listDirPath, err := sess.FileSystem.SafePath(req.Path)
+	if err != nil {
+		h.Engine.Logger.Error(
+			"Invalid list directory path",
+			"session_id", sess.ID,
+			"path", req.Path,
+			"error", err,
+		)
+		writeJSONError(w, http.StatusBadRequest, "Invalid list directory path")
+		return
+	}
+
+	// check if dir exists
+	info, err := os.Stat(listDirPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			h.Engine.Logger.Error(
+				"Directory does not exist",
+				"session_id", sess.ID,
+				"path", req.Path,
+			)
+			writeJSONError(w, http.StatusNotFound, "Directory does not exist")
+		} else {
+			h.Engine.Logger.Error(
+				"Failed to access Directory",
+				"session_id", sess.ID,
+				"path", req.Path,
+				"error", err,
+			)
+			writeJSONError(w, http.StatusInternalServerError, "Failed to access Directory")
+		}
+		return
+	}
+
+	// check if path is dir
+	if !info.IsDir() {
+		h.Engine.Logger.Error(
+			"Path is not a Directory",
+			"session_id", sess.ID,
+			"path", req.Path,
+		)
+		writeJSONError(w, http.StatusNotFound, "Path is not a Directory")
+		return
+	}
+
+	fileDetails, err := sess.FileSystem.ListWorkspace(req.Path)
+	if err != nil {
+		h.Engine.Logger.Error(
+			"Unable to list directory",
+			"session_id", sess.ID,
+			"path", req.Path,
+			"err", err.Error(),
+		)
+		writeJSONError(w, http.StatusNotFound, "Unable to list directory")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ListFileResponse{
+		Files: fileDetails,
+	})
+
 }

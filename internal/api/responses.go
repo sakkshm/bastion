@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/sakkshm/bastion/internal/filesystem"
 )
 
 type CreateSessionResponse struct {
@@ -54,6 +56,10 @@ type FileUploadResponse struct {
 
 type FileDeleteResponse struct {
 	Status string `json:"status"`
+}
+
+type ListFileResponse struct {
+    Files []filesystem.FileEntry `json:"files"`
 }
 
 type APIError struct {

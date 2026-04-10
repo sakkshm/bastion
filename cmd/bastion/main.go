@@ -90,6 +90,7 @@ func main() {
 		r.Post(api.UploadEndpoint, routeHandler.UploadHandler)
 		r.Get(api.DownloadEndpoint, routeHandler.DownloadHandler)
 		r.Delete(api.DeleteEndpoint, routeHandler.DeleteHandler)
+		r.Get(api.ListDirEndpoint, routeHandler.ListFilesHandler)
 	})
 
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
