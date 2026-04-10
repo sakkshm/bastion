@@ -29,4 +29,5 @@ const (
 const (
 	UploadEndpoint = "/upload"
 	DownloadEndpoint = "/download"
+	DeleteEndpoint = "/delete"
 )

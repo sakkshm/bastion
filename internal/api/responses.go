@@ -52,6 +52,10 @@ type FileUploadResponse struct {
 	Path   string `json:"path"`
 }
 
+type FileDeleteResponse struct {
+	Status string `json:"status"`
+}
+
 type APIError struct {
 	Error string `json:"error"`
 }

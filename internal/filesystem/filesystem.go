@@ -92,11 +92,30 @@ func (fs *FSWorkspace) SafePath(rel string) (string, error) {
 	full := filepath.Join(fs.Mount, rel)
 	full = filepath.Clean(full)
 
+	// Basic prefix check (existing)
 	if !strings.HasPrefix(full, fs.Mount+string(os.PathSeparator)) {
 		return "", fmt.Errorf("invalid path")
 	}
 
-	return full, nil
+	// symlink resolution
+	resolved, err := filepath.EvalSymlinks(full)
+	if err != nil {
+		return "", fmt.Errorf("invalid path")
+	}
+
+	// Resolve mount as well
+	mountResolved, err := filepath.EvalSymlinks(fs.Mount)
+	if err != nil {
+		return "", fmt.Errorf("invalid mount")
+	}
+
+	// Ensure resolved path is still inside mount
+	if !strings.HasPrefix(resolved, mountResolved+string(os.PathSeparator)) &&
+		resolved != mountResolved {
+		return "", fmt.Errorf("path escapes sandbox")
+	}
+
+	return resolved, nil
 }
 
 func (fs FSWorkspace) FSExists() bool {
