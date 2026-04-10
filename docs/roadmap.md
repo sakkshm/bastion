@@ -29,86 +29,90 @@ Build a lightweight, self-hosted, **policy-driven workspace runtime for AI agent
 
 ## Phase 1: Core Workspace Runtime
 
-**Goal:** Persistent, concurrent execution environments (replace session + queue model).
+**Goal:** Persistent, concurrent execution environments.
 
 **Features:**
 
 * REST API:
-
   * ~~CreateSessionEndpoint  = "/session/create"~~ → `/workspaces`
   * ~~GetSessionStatusEndpoint  = "/session/{id}/status"~~ → `/workspaces/{id}`
   * ~~StartSessionEndpoint  = "/session/{id}/start"~~ → `/workspaces/{id}/start`
   * ~~StopSessionEndpoint  = "/session/{id}/start"~~ → `/workspaces/{id}/stop`
   * ~~DeleteSessionEndpoint  = "/session/{id}"~~ → `/workspaces/{id}`
   * ~~SessionExecuteEndpoint = "/session/{id}/exec"~~ → `/workspaces/{id}/exec`
-  * NEW: `/workspaces/{id}/exec/{exec_id}` (async only)
-  * NEW: `/workspaces/{id}/terminal` (WebSocket TTY)
-* WebSocket endpoint for:
-
-  * Streaming stdout/stderr (exec)
-  * Interactive terminal (TTY)
+  * ~~Polling endpoint: `/workspaces/{id}/exec/{exec_id}`~~ 
+  ~~* NEW: `/workspaces/{id}/terminal` (WebSocket TTY)~~
+~~* WebSocket endpoint for:~~
+~~  * Streaming stdout/stderr (exec)~~
+~~  * Interactive terminal (TTY)~~
 * ~~Docker sandbox (default)~~
-* Persistent containers (`sleep infinity`)
-* Bare-metal mode (optional)
-* Concurrent exec per workspace (no queue)
+* ~~Persistent containers~~
 
 **Additions:**
 
-* Execution model explicitly supports:
-
-  * Interactive (TTY over WS)
-  * Streaming (HTTP chunked/SSE)
-  * Async (exec_id-based)
-* Each exec maps to independent Docker process (no shared execution state)
-* Workspace lifecycle is independent of execution lifecycle
+~~* Execution model explicitly supports:~~
+~~  * Interactive (TTY over WS)~~
+  * ~~Async (exec_id-based)~~
+*~~ Each exec maps to independent Docker process ~~
+*~~ Workspace lifecycle is independent of execution lifecycle~~
 * Terminal uses bidirectional streaming + resize events
 
 **Implementation Notes (Go):**
 
-* Use Docker SDK for Go (`github.com/docker/docker/client`)
-* Use `context.Context` for timeout & cancellation
-* Use `ContainerExecCreate + Attach` for exec
-* Use `Tty: true` for terminal mode
-* Stream stdout/stderr via:
+~~* Stream stdout/stderr via:~~
+~~  * WebSocket (interactive)~~
+~~  * HTTP streaming (non-interactive)~~
+~~* Maintain per-workspace:~~
+~~  * ContainerID~~
+~~  * Active exec counter (atomic)~~
 
-  * WebSocket (interactive)
-  * HTTP streaming (non-interactive)
-* Maintain per-workspace:
-
-  * ContainerID
-  * Active exec counter (atomic)
-* Remove:
-
-  * Job queue
-  * Worker goroutines controlling execution
 
 **Additions:**
 
-* Enforce concurrency using atomic counters:
-
-```go
-activeExecs atomic.Int32
-maxExecs    int32
-```
-
-* Execution must be stateless:
-
-  * No shared buffers
-  * No per-workspace locks blocking exec
+~~* Execution must be stateless:~~
+~~  * No shared buffers~~
+~~  * No per-workspace locks blocking exec~~
 
 **Test Checklist:**
 
-* [ ] Commands execute successfully in Docker containers
-* [ ] Multiple commands run concurrently in same workspace
-* [ ] Interactive terminal works (TTY + resize)
-* [ ] Timeout and CPU/memory limits enforced
-* [ ] Containers persist across exec calls
-* [ ] Containers restart correctly after stop/start
-* [ ] Exec does not block other execs in same workspace
+~~* Commands execute successfully in Docker containers~~
+~~* Multiple commands run concurrently in same workspace~~
+~~* Interactive terminal works (TTY + resize)~~
+~~* Timeout and CPU/memory limits enforced~~
+~~* Containers persist across exec calls~~
+* Containers restart correctly after stop/start
+~~* Exec does not block other execs in same workspace~~
 
 
+## Phase 1.5: File Management API
 
-## Phase 1.5: Workspace Persistence (CRITICAL)
+**Features:**
+
+* ~~Workspace-scoped file access~~
+* ~~Bind-mounted host directories (`/sessions/{session_id}`)~~
+* ~~Upload, Download, Delete files~~
+* ~~List directories~~
+* ~~Enforce workspace scoping~~
+
+**Additions:**
+
+* Filesystem guarantees:
+  * ~~Isolation per workspace~~
+  * ~~No directory traversal~~
+
+
+**Test Checklist:**
+
+* [ ]~~ Upload only in workspace~~
+* [ ] ~~Cannot escape workspace~~
+* [ ]~~ Directory listing works~~
+* [ ]~~ Download returns correct content~~
+* [ ] ~~Files persist across container restarts~~
+* [ ] ~~Delete removes files~~
+* [ ] ~~Path traversal attacks blocked~~
+
+
+## Phase 2: Workspace Persistence (CRITICAL)
 
 **Goal:** Survive restarts, avoid orphan containers.
 
@@ -116,7 +120,6 @@ maxExecs    int32
 
 * Persistent workspace store (SQLite for MVP)
 * Store:
-
   * ID, Image, ContainerID, Status
   * Mounts, EnvVars, CreatedAt
 * Startup reconciliation with Docker
@@ -146,7 +149,7 @@ maxExecs    int32
 
 
 
-## Phase 2: Policy Engine
+## Phase 3: Policy Engine
 
 **Goal:** Governance over commands, filesystem, network.
 
@@ -210,44 +213,6 @@ type Policy struct {
 
 
 
-## Phase 3: File Management API
-
-**Features:**
-
-* Workspace-scoped file access
-* Bind-mounted host directories (`/var/workspaces/{id}`)
-* Upload, Download, Delete files
-* List directories
-* Optional search
-* Enforce workspace scoping
-
-**Additions:**
-
-* Filesystem guarantees:
-
-  * Persistence across restarts
-  * Isolation per workspace
-  * No directory traversal
-* Bind mounts preferred for MVP (debuggability over abstraction)
-
-**Go Notes:**
-
-* Use `os` / `io` for file ops
-* Validate paths (no escape outside workspace)
-* Use bind mounts instead of volumes (MVP simplicity)
-
-**Test Checklist:**
-
-* [ ] Upload only in workspace
-* [ ] Cannot escape workspace
-* [ ] Directory listing works
-* [ ] Download returns correct content
-* [ ] Files persist across container restarts
-* [ ] Delete removes files
-* [ ] Path traversal attacks blocked
-
-
-
 ## Phase 4: Audit Logging & Observability
 
 **Features:**
@@ -255,7 +220,6 @@ type Policy struct {
 * JSON structured logs
 * Query logs via REST API (`/logs`)
 * Execution metadata:
-
   * Command
   * Exit code
   * Duration
