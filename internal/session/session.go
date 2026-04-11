@@ -57,6 +57,27 @@ func (s Status) String() string {
 	}
 }
 
+func ParseStatus(s string) Status {
+	switch s {
+	case "created":
+		return StatusCreated
+	case "starting":
+		return StatusStarting
+	case "running":
+		return StatusRunning
+	case "busy":
+		return StatusBusy
+	case "stopped":
+		return StatusStopped
+	case "failed":
+		return StatusFailed
+	case "deleted":
+		return StatusDeleted
+	default:
+		return StatusCreated
+	}
+}
+
 type ExecJob struct {
 	JobID     string
 	Cmd       []string
