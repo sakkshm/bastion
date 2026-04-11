@@ -18,6 +18,45 @@ type FSWorkspace struct {
 
 var validSessionID = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 
+func SessionFSExist(cfg config.Config, sessionID string) (bool, error) {
+	if sessionID == "" {
+		return false, errors.New("sessionID cannot be empty")
+	}
+	if !validSessionID.MatchString(sessionID) {
+		return false, errors.New("invalid sessionID format")
+	}
+
+	base, err := filepath.Abs(cfg.Execution.WorkingDirectoryBase)
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve base path: %w", err)
+	}
+
+	workspacePath := filepath.Join(base, sessionID)
+
+	rel, err := filepath.Rel(base, workspacePath)
+	if err != nil {
+		return false, fmt.Errorf("path resolution failed: %w", err)
+	}
+
+	if strings.HasPrefix(rel, "..") {
+		return false, fmt.Errorf("path traversal detected")
+	}
+
+	info, err := os.Stat(workspacePath)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("stat failed: %w", err)
+	}
+
+	if !info.IsDir() {
+		return false, errors.New("not a directory")
+	}
+
+	return true, nil
+}
+
 func NewFSWorkspace(cfg config.Config, sessionID string) (*FSWorkspace, error) {
 
 	if sessionID == "" {
@@ -27,7 +66,6 @@ func NewFSWorkspace(cfg config.Config, sessionID string) (*FSWorkspace, error) {
 		return nil, fmt.Errorf("invalid sessionID format")
 	}
 
-	// resolve absolute base path
 	base, err := filepath.Abs(cfg.Execution.WorkingDirectoryBase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve base path: %w", err)
@@ -35,23 +73,37 @@ func NewFSWorkspace(cfg config.Config, sessionID string) (*FSWorkspace, error) {
 
 	base = filepath.Clean(base)
 
-	// construct workspace path
 	workspacePath := filepath.Join(base, sessionID)
 	workspacePath = filepath.Clean(workspacePath)
 
-	// prevent path traversal
 	if !strings.HasPrefix(workspacePath, base+string(os.PathSeparator)) {
 		return nil, fmt.Errorf("path traversal detected")
 	}
 
-	// create directory with restrictive permissions
+	// check if dir exist
+	info, err := os.Stat(workspacePath)
+	if err == nil {
+		if !info.IsDir() {
+			return nil, fmt.Errorf("workspace path exists but is not a directory")
+		}
+
+		return &FSWorkspace{
+			Mount: workspacePath,
+			base:  base,
+		}, nil
+	}
+
+	if !os.IsNotExist(err) {
+		return nil, fmt.Errorf("failed to check workspace: %w", err)
+	}
+
+	// create only if not exists
 	err = os.MkdirAll(workspacePath, 0700)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create workspace: %w", err)
 	}
 
-	// add permisions
-	os.Chown(workspacePath, 1000, 1000)
+	_ = os.Chown(workspacePath, 1000, 1000)
 
 	return &FSWorkspace{
 		Mount: workspacePath,
@@ -90,46 +142,46 @@ func (fs *FSWorkspace) DeleteWorkspace() error {
 
 func (fs *FSWorkspace) SafePath(rel string) (string, error) {
 
-    // Normalize input
-    rel = filepath.Clean("/" + rel)
-    rel = strings.TrimPrefix(rel, "/")
+	// Normalize input
+	rel = filepath.Clean("/" + rel)
+	rel = strings.TrimPrefix(rel, "/")
 
-    full := filepath.Join(fs.Mount, rel)
-    full = filepath.Clean(full)
+	full := filepath.Join(fs.Mount, rel)
+	full = filepath.Clean(full)
 
-    // Resolve mount once
-    mountResolved, err := filepath.EvalSymlinks(fs.Mount)
-    if err != nil {
-        return "", fmt.Errorf("invalid mount")
-    }
+	// Resolve mount once
+	mountResolved, err := filepath.EvalSymlinks(fs.Mount)
+	if err != nil {
+		return "", fmt.Errorf("invalid mount")
+	}
 
-    // ROOT CASE
-    if full == fs.Mount {
-        return mountResolved, nil
-    }
+	// ROOT CASE
+	if full == fs.Mount {
+		return mountResolved, nil
+	}
 
-    // Pre-check (cheap containment)
-    relPath, err := filepath.Rel(mountResolved, full)
-    if err != nil || strings.HasPrefix(relPath, "..") {
-        return "", fmt.Errorf("invalid path")
-    }
+	// Pre-check (cheap containment)
+	relPath, err := filepath.Rel(mountResolved, full)
+	if err != nil || strings.HasPrefix(relPath, "..") {
+		return "", fmt.Errorf("invalid path")
+	}
 
-    // Resolve symlinks ONLY if path exists
-    resolved := full
-    if _, err := os.Lstat(full); err == nil {
-        resolved, err = filepath.EvalSymlinks(full)
-        if err != nil {
-            return "", fmt.Errorf("invalid path")
-        }
-    }
+	// Resolve symlinks ONLY if path exists
+	resolved := full
+	if _, err := os.Lstat(full); err == nil {
+		resolved, err = filepath.EvalSymlinks(full)
+		if err != nil {
+			return "", fmt.Errorf("invalid path")
+		}
+	}
 
-    // Final containment check
-    relPath, err = filepath.Rel(mountResolved, resolved)
-    if err != nil || strings.HasPrefix(relPath, "..") {
-        return "", fmt.Errorf("path escapes sandbox")
-    }
+	// Final containment check
+	relPath, err = filepath.Rel(mountResolved, resolved)
+	if err != nil || strings.HasPrefix(relPath, "..") {
+		return "", fmt.Errorf("path escapes sandbox")
+	}
 
-    return resolved, nil
+	return resolved, nil
 }
 
 func (fs FSWorkspace) FSExists() bool {

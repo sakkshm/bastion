@@ -2,18 +2,23 @@ package engine
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/sakkshm/bastion/internal/config"
+	"github.com/sakkshm/bastion/internal/database"
 	"github.com/sakkshm/bastion/internal/docker"
+	"github.com/sakkshm/bastion/internal/filesystem"
 	"github.com/sakkshm/bastion/internal/session"
+	"github.com/sakkshm/bastion/internal/websocket"
 )
 
 type Engine struct {
 	Sessions *session.SessionManager
 	Docker   *docker.DockerClient
+	Database *database.DatabaseConn
 	Logger   *slog.Logger
 	Config   *config.Config
 }
@@ -32,12 +37,29 @@ func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 		return nil, err
 	}
 
+	// initializing DB
+	logger.Info("Initializing DB Connection")
+	dbConn, err := database.NewDBConn()
+	if err != nil {
+		return nil, err
+	}
+
+	// make session manager
+	sm, err := session.NewSessionManager(dbConn)
+	if err != nil {
+		return nil, err
+	}
+
 	e := Engine{
-		Sessions: session.NewSessionManager(),
+		Sessions: sm,
 		Docker:   dockerClient,
+		Database: dbConn,
 		Logger:   logger,
 		Config:   cfg,
 	}
+
+	// reconcile state
+	e.ReconcileAllSessions()
 
 	e.StartSessionGarbageCollector(
 		time.Duration(cfg.Execution.SessionCleanupIntervalSec)*time.Second,
@@ -48,7 +70,17 @@ func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 }
 
 func (e *Engine) Close() error {
-	return e.Docker.CloseClient()
+	err := e.Docker.CloseClient()
+	if err != nil {
+		return err
+	}
+
+	err = e.Database.Close()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (e *Engine) AttachWorker(sess *session.Session) {
@@ -155,4 +187,122 @@ func (e *Engine) cleanupSessions(ttl time.Duration) {
 		}
 	}
 
+}
+
+func (e *Engine) ReconcileAllSessions() error {
+	rows, err := e.Sessions.DBConn.Database.Query(session.GetAllSessionsData)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	var validSessions []session.Session
+
+	for rows.Next() {
+		s, err := e.reconcileRow(rows)
+		if err != nil {
+			e.Logger.Error("failed to reconcile session", "err", err)
+			continue
+		}
+		if s != nil {
+			validSessions = append(validSessions, *s)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	return e.activateSessions(validSessions)
+}
+
+func (e *Engine) reconcileRow(rows *sql.Rows) (*session.Session, error) {
+	var id string
+	var containerID string
+	var createdAt int64
+	var lastUsedAt int64
+	var status string
+	var fsMount string
+
+	err := rows.Scan(
+		&id,
+		&containerID,
+		&createdAt,
+		&lastUsedAt,
+		&status,
+		&fsMount,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// validate container
+	ok, err := e.Docker.ContainerExists(containerID)
+	if err != nil || !ok {
+		e.Logger.Warn("dropping session: missing container",
+			"session", id,
+			"container", containerID,
+			"err", err,
+		)
+		return nil, nil
+	}
+
+	// validate filesystem
+	ok, err = filesystem.SessionFSExist(*e.Config, id)
+	if err != nil || !ok {
+		e.Logger.Warn("dropping session: missing filesystem",
+			"session", id,
+			"err", err,
+		)
+		return nil, nil
+	}
+
+	// rebuild session
+	return e.rebuildSession(id, containerID, createdAt, lastUsedAt, status)
+}
+
+func (e *Engine) rebuildSession(
+	id string,
+	containerID string,
+	createdAt int64,
+	lastUsedAt int64,
+	status string,
+) (*session.Session, error) {
+
+	jobHandler := session.NewJobHandler()
+	wsManager := websocket.NewWSManager(id)
+
+	go wsManager.Run()
+
+	fs, err := filesystem.NewFSWorkspace(*e.Config, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &session.Session{
+		ID:          id,
+		ContainerID: containerID,
+		CreatedAt:   time.Unix(createdAt, 0).UTC(),
+		LastUsedAt:  time.Unix(lastUsedAt, 0).UTC(),
+		Status:      session.ParseStatus(status),
+		JobHandler:  jobHandler,
+		WSManager:   wsManager,
+		FileSystem:  fs,
+	}, nil
+}
+
+func (e *Engine) activateSessions(sessions []session.Session) error {
+	e.Logger.Info("Activating sessions", "count", len(sessions))
+
+	// batch insert into memory manager
+	if err := e.Sessions.BatchAdd(sessions); err != nil {
+		return err
+	}
+
+	for i := range sessions {
+		e.Logger.Info("Attaching worker to session", "session", sessions[i].ID)
+		e.AttachWorker(&sessions[i])
+	}
+
+	return nil
 }

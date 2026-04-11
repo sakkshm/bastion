@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -15,6 +16,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/sakkshm/bastion/internal/session"
@@ -36,6 +38,26 @@ func NewDockerClient() (*DockerClient, error) {
 
 func (d *DockerClient) CloseClient() error {
 	return d.APIClient.Close()
+}
+
+func (d *DockerClient) ContainerExists(containerID string) (bool, error) {
+	if containerID == "" {
+		return false, errors.New("containerID cannot be empty")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := d.APIClient.ContainerInspect(ctx, containerID)
+	if err == nil {
+		return true, nil
+	}
+
+	if errdefs.IsNotFound(err) {
+		return false, nil
+	}
+
+	return false, err
 }
 
 func (d *DockerClient) PrefetchImage(imageName string, logger *slog.Logger) error {
