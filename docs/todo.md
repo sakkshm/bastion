@@ -5,7 +5,10 @@
 - WS stream dies unexpectedly
 - Add support for terminal resize
 - Add support for envs
-- Refactor handlers, they should only contain request related logic not actual business logic, that should be in utils, make abstraction better
+- Refactor handlers, they should only contain request related logic not actual business logic, that should be in utils, make abstraction better and consistent
+- make logging and errors consistent
+- add auth and api keys
+- improve resource cleanup
 
 - Add dashboard type endpoint for admin to montior system
 - Add a latency check/benchmark system

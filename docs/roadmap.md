@@ -118,11 +118,11 @@ Build a lightweight, self-hosted, **policy-driven workspace runtime for AI agent
 
 **Features:**
 
-* Persistent workspace store (SQLite for MVP)
-* Store:
-  * ID, Image, ContainerID, Status
-  * Mounts, EnvVars, CreatedAt
-* Startup reconciliation with Docker
+* ~~Persistent workspace store (SQLite)~~
+* ~~Store~~:
+  * ~~ID, Image, ContainerID, Status~~
+  * ~~Mounts, EnvVars, CreatedAt~~
+~~* Startup reconciliation with Docker~~
 * Container lifecycle tracking
 
 **Additions:**
@@ -142,7 +142,7 @@ Build a lightweight, self-hosted, **policy-driven workspace runtime for AI agent
 
 **Test Checklist:**
 
-* [ ] Server restart preserves workspace state
+* [ ] ~~Server restart preserves workspace state~~
 * [ ] Orphan containers detected and handled
 * [ ] Status reflects actual container state
 * [ ] Container crash updates workspace status
