@@ -30,21 +30,18 @@ func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 		return nil, err
 	}
 
-	// Prefetch container image at startup
 	logger.Info("Pre-fetching container image")
 	err = dockerClient.PrefetchImage(cfg.Sandbox.Image, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	// initializing DB
 	logger.Info("Initializing DB Connection")
 	dbConn, err := database.NewDBConn()
 	if err != nil {
 		return nil, err
 	}
 
-	// make session manager
 	sm, err := session.NewSessionManager(dbConn)
 	if err != nil {
 		return nil, err
@@ -59,7 +56,7 @@ func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 	}
 
 	// reconcile state
-	e.ReconcileAllSessions()
+	_ = e.ReconcileAllSessions()
 
 	e.StartSessionGarbageCollector(
 		time.Duration(cfg.Execution.SessionCleanupIntervalSec)*time.Second,
@@ -70,29 +67,18 @@ func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 }
 
 func (e *Engine) Close() error {
-	err := e.Docker.CloseClient()
-	if err != nil {
+	if err := e.Docker.CloseClient(); err != nil {
 		return err
 	}
-
-	err = e.Database.Close()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return e.Database.Close()
 }
 
 func (e *Engine) AttachWorker(sess *session.Session) {
-
-	// for v0.1, just one worker to prevent race conditions and stuff
-	// TODO: in the future add multiple workers
 	workerCount := 1
 
-	for range workerCount {
+	for i := 0; i < workerCount; i++ {
 		go func() {
 			defer func() {
-				// recover goroutine if worker panics
 				if r := recover(); r != nil {
 					e.Logger.Error("worker panic", "error", r)
 				}
@@ -108,7 +94,6 @@ func (e *Engine) AttachWorker(sess *session.Session) {
 					job.JobID,
 				)
 
-				// cancel context after completion
 				job.Cancel()
 
 				job.Output.ConsoleOutput = output
@@ -126,6 +111,7 @@ func (e *Engine) AttachWorker(sess *session.Session) {
 					job.Output.ErrOut = err.Error()
 					continue
 				}
+
 				if exitCode != 0 {
 					job.Status = session.JobFailed
 				} else {
@@ -158,35 +144,27 @@ func (e *Engine) cleanupSessions(ttl time.Duration) {
 		}
 	}
 
-	// delete from SessionManager
 	e.Sessions.BatchDelete(toDelete)
 
-	// delete containers related data
 	for _, session := range toDeleteSessions {
-
-		// delete docker container
+		// kill all ws clients
+		session.WSManager.Cancel()
+		
 		err := e.Docker.DeleteContainer(context.Background(), session.ContainerID)
 		if err != nil {
-			e.Logger.Error(
-				"Unable to delete docker conatiner for a session",
+			e.Logger.Error("Unable to delete docker container",
 				"session_id", session.ID,
-				"conatiner_id", session.ContainerID,
+				"container_id", session.ContainerID,
 			)
 		}
 
-		// disconnect all clients
-		session.WSManager.Cancel()
-
-		// delete fs workspace
 		err = session.FileSystem.DeleteWorkspace()
 		if err != nil {
-			e.Logger.Error(
-				"Unable to delete fs workspace for a session",
+			e.Logger.Error("Unable to delete fs workspace",
 				"session_id", session.ID,
 			)
 		}
 	}
-
 }
 
 func (e *Engine) ReconcileAllSessions() error {
@@ -197,13 +175,20 @@ func (e *Engine) ReconcileAllSessions() error {
 	defer rows.Close()
 
 	var validSessions []session.Session
+	var invalidSessionIDs []string
 
 	for rows.Next() {
-		s, err := e.reconcileRow(rows)
+		s, invalidID, err := e.reconcileRow(rows)
 		if err != nil {
 			e.Logger.Error("failed to reconcile session", "err", err)
 			continue
 		}
+
+		if invalidID != "" {
+			invalidSessionIDs = append(invalidSessionIDs, invalidID)
+			continue
+		}
+
 		if s != nil {
 			validSessions = append(validSessions, *s)
 		}
@@ -213,10 +198,21 @@ func (e *Engine) ReconcileAllSessions() error {
 		return err
 	}
 
-	return e.activateSessions(validSessions)
+	if err := e.activateSessions(validSessions); err != nil {
+		return err
+	}
+
+	if len(invalidSessionIDs) > 0 {
+		e.Logger.Info("Cleaning up invalid sessions", "count", len(invalidSessionIDs))
+		for _, id := range invalidSessionIDs {
+			e.Sessions.DeleteSessionData(id)
+		}
+	}
+
+	return nil
 }
 
-func (e *Engine) reconcileRow(rows *sql.Rows) (*session.Session, error) {
+func (e *Engine) reconcileRow(rows *sql.Rows) (*session.Session, string, error) {
 	var id string
 	var containerID string
 	var createdAt int64
@@ -233,10 +229,9 @@ func (e *Engine) reconcileRow(rows *sql.Rows) (*session.Session, error) {
 		&fsMount,
 	)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	// validate container
 	ok, err := e.Docker.ContainerExists(containerID)
 	if err != nil || !ok {
 		e.Logger.Warn("dropping session: missing container",
@@ -244,21 +239,24 @@ func (e *Engine) reconcileRow(rows *sql.Rows) (*session.Session, error) {
 			"container", containerID,
 			"err", err,
 		)
-		return nil, nil
+		return nil, id, nil
 	}
 
-	// validate filesystem
 	ok, err = filesystem.SessionFSExist(*e.Config, id)
 	if err != nil || !ok {
 		e.Logger.Warn("dropping session: missing filesystem",
 			"session", id,
 			"err", err,
 		)
-		return nil, nil
+		return nil, id, nil
 	}
 
-	// rebuild session
-	return e.rebuildSession(id, containerID, createdAt, lastUsedAt, status)
+	s, err := e.rebuildSession(id, containerID, createdAt, lastUsedAt, status)
+	if err != nil {
+		return nil, id, err
+	}
+
+	return s, "", nil
 }
 
 func (e *Engine) rebuildSession(
@@ -294,7 +292,6 @@ func (e *Engine) rebuildSession(
 func (e *Engine) activateSessions(sessions []session.Session) error {
 	e.Logger.Info("Activating sessions", "count", len(sessions))
 
-	// batch insert into memory manager
 	if err := e.Sessions.BatchAdd(sessions); err != nil {
 		return err
 	}
