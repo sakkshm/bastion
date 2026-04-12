@@ -8,6 +8,7 @@
 - Refactor handlers, they should only contain request related logic not actual business logic, that should be in utils, make abstraction better and consistent
 - make logging and errors consistent
 - add auth and api keys
+- write tests
 - improve resource cleanup
 
 - Add dashboard type endpoint for admin to montior system

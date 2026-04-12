@@ -112,8 +112,7 @@ Build a lightweight, self-hosted, **policy-driven workspace runtime for AI agent
 * [ ] ~~Path traversal attacks blocked~~
 
 
-## Phase 2: Workspace Persistence (CRITICAL)
-
+~~## Phase 2: Workspace Persistence (CRITICAL)~~
 **Goal:** Survive restarts, avoid orphan containers.
 
 **Features:**
@@ -126,15 +125,6 @@ Build a lightweight, self-hosted, **policy-driven workspace runtime for AI agent
 * Container lifecycle tracking
 
 **Additions:**
-
-* Workspace record is the **source of truth**, not container state
-
-* Containers are treated as recoverable/replaceable runtime artifacts
-
-* Reconciliation logic required:
-
-  * Missing container → mark workspace failed
-  * Orphan container → cleanup or attach
 
 * Event-driven updates via Docker events:
 
