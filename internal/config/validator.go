@@ -13,11 +13,6 @@ func (c *Config) Validate() error {
 		return errors.New("server.port must be between 1 and 65535")
 	}
 
-	//  Execution Mode
-	if c.Execution.Mode != "sandbox" && c.Execution.Mode != "bare_metal" {
-		return errors.New("execution.mode must be 'sandbox' or 'bare_metal'")
-	}
-
 	if c.Execution.MaxConcurrent <= 0 {
 		return errors.New("execution.max_concurrent_sessions must be > 0")
 	}
@@ -39,43 +34,31 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid working_directory_base: %w", err)
 	}
 
-	//  Bare Metal
-	if c.Execution.Mode == "bare_metal" {
-		if !c.BareMetal.Enabled {
-			return errors.New("bare_metal mode selected but bare_metal.enabled is false")
-		}
-
-		if len(c.BareMetal.AllowedCommands) == 0 {
-			return errors.New("bare_metal.allowed_commands cannot be empty in bare_metal mode")
-		}
+	// sandbox settings
+	if !c.Sandbox.Enabled {
+		return errors.New("sandbox mode selected but sandbox.enabled is false")
 	}
 
-	//  Sandbox
-	if c.Execution.Mode == "sandbox" {
-		if !c.Sandbox.Enabled {
-			return errors.New("sandbox mode selected but sandbox.enabled is false")
-		}
-
-		if c.Sandbox.Image == "" {
-			return errors.New("sandbox.image cannot be empty")
-		}
-
-		if c.Sandbox.Memory == 0 {
-			return errors.New("sandbox.memory cannot be empty")
-		}
-
-		if c.Sandbox.CPUs == 0 {
-			return errors.New("sandbox.cpus cannot be empty")
-		}
-
-		if c.Sandbox.PIDs <= 0 {
-			return errors.New("sandbox.pids must be > 0")
-		}
-
-		if c.Sandbox.JobTTL <= 0 {
-			return errors.New("sandbox.job_ttl must be > 0")
-		}
+	if c.Sandbox.Image == "" {
+		return errors.New("sandbox.image cannot be empty")
 	}
+
+	if c.Sandbox.Memory == 0 {
+		return errors.New("sandbox.memory cannot be empty")
+	}
+
+	if c.Sandbox.CPUs == 0 {
+		return errors.New("sandbox.cpus cannot be empty")
+	}
+
+	if c.Sandbox.PIDs <= 0 {
+		return errors.New("sandbox.pids must be > 0")
+	}
+
+	if c.Sandbox.JobTTL <= 0 {
+		return errors.New("sandbox.job_ttl must be > 0")
+	}
+
 
 	// File System
 	if c.FileSystem.MaxUploadSize <= 0 {

@@ -13,10 +13,6 @@ session_ttl_minutes = 10
 session_cleanup_interval_sec = 60
 working_directory_base = "./sessions"
 
-[bare_metal]
-enabled = false
-allowed_commands = ["ls", "cat", "echo"]
-
 [sandbox]
 enabled = true
 image = "alpine:3.14"
