@@ -11,7 +11,7 @@ import (
 	"github.com/sakkshm/bastion/internal/session"
 )
 
-func (h *Handler) UploadHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
@@ -145,7 +145,7 @@ func (h *Handler) UploadHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *Handler) DownloadHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
 	if !ok {
@@ -221,7 +221,7 @@ func (h *Handler) DownloadHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, downloadPath)
 }
 
-func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) DeleteFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
 	if !ok {
