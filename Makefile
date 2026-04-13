@@ -10,8 +10,7 @@ build:
 	go build -o $(BUILD_DIR)/$(APP_NAME) $(CMD_PATH)
 
 run:
-	go run $(CMD_PATH) \
-	--config="$(CONFIG_PATH)"
+	go run $(CMD_PATH) run --config="$(CONFIG_PATH)"
 
 fmt:
 	go fmt ./...
