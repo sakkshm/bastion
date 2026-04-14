@@ -16,6 +16,6 @@ var runCmd = &cobra.Command{
 }
 
 func init() {
-	runCmd.Flags().StringVar(&configPath, "config", "./config/config", "Path to Config.toml")
+	runCmd.Flags().StringVar(&configPath, "config", "./config/config.toml", "Path to Config.toml")
 	RootCmd.AddCommand(runCmd)
 }
