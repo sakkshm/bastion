@@ -18,11 +18,13 @@ type ExecutionConfig struct {
 	SessionTTLMinutes         int    `toml:"session_ttl_minutes"`
 	SessionCleanupIntervalSec int    `toml:"session_cleanup_interval_sec"`
 	WorkingDirectoryBase      string `toml:"working_directory_base"`
+	EnvFilePath               string `toml:"env_path"`
 }
 
 type SandboxConfig struct {
 	Enabled        bool    `toml:"enabled"`
 	Image          string  `toml:"image"` // image of containers for sandbox
+	LoadEnv        bool    `toml:"load_env"`
 	NetworkEnabled bool    `toml:"network_enabled"`
 	Memory         int     `toml:"memory_mbs"`
 	CPUs           float32 `toml:"cpus"`
@@ -31,9 +33,8 @@ type SandboxConfig struct {
 }
 
 type FileSystemConfig struct {
-	MaxUploadSize        int    `toml:"max_upload_size_mbs"`
+	MaxUploadSize int `toml:"max_upload_size_mbs"`
 }
-
 
 type LoggingConfig struct {
 	Level  string `toml:"level"`  // debug | info | warn | error

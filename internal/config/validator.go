@@ -43,6 +43,10 @@ func (c *Config) Validate() error {
 		return errors.New("sandbox.image cannot be empty")
 	}
 
+	if c.Sandbox.LoadEnv && c.Execution.EnvFilePath == "" {
+		return errors.New("execution.envfilepath cannot be empty if sandbox.loadenv is true")
+	}
+
 	if c.Sandbox.Memory == 0 {
 		return errors.New("sandbox.memory cannot be empty")
 	}
@@ -58,7 +62,6 @@ func (c *Config) Validate() error {
 	if c.Sandbox.JobTTL <= 0 {
 		return errors.New("sandbox.job_ttl must be > 0")
 	}
-
 
 	// File System
 	if c.FileSystem.MaxUploadSize <= 0 {
