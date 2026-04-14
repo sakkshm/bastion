@@ -44,6 +44,8 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 		CPUs:           h.Engine.Config.Sandbox.CPUs,
 		PIDs:           h.Engine.Config.Sandbox.PIDs,
 		NetworkEnabled: h.Engine.Config.Sandbox.NetworkEnabled,
+		LoadEnv:        h.Engine.Config.Sandbox.LoadEnv,
+		EnvPath:        h.Engine.Config.Execution.EnvFilePath,
 		FileSystem:     *filesystem,
 	}
 

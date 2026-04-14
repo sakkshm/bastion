@@ -15,5 +15,7 @@ type ContainerConfig struct {
 	CPUs           float32
 	PIDs           int
 	NetworkEnabled bool
+	LoadEnv        bool
+	EnvPath        string
 	FileSystem     filesystem.FSWorkspace
 }

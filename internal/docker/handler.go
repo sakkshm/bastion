@@ -19,6 +19,7 @@ import (
 	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/sakkshm/bastion/internal/config"
 	"github.com/sakkshm/bastion/internal/session"
 )
 
@@ -101,6 +102,25 @@ func (d *DockerClient) PrefetchImage(imageName string, logger *slog.Logger) erro
 }
 
 func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg ContainerConfig, sessionID string) (string, error) {
+
+	defaultEnvVars := []string{
+		"HOME=/tmp",
+		"TMPDIR=/tmp",
+	}
+
+	var envVars []string
+	envVars = append(envVars, defaultEnvVars...)
+
+	// load env if needed
+	if cfg.LoadEnv {
+		userEnv, err := config.LoadEnvToDocker(cfg.EnvPath)
+		if err != nil {
+			return "", err
+		}
+
+		envVars = append(envVars, userEnv...)
+	}
+
 	// Container config
 	config := &container.Config{
 		Image:        cfg.Image,
@@ -116,9 +136,7 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 		Labels: map[string]string{
 			"session_id": sessionID,
 		},
-		Env: []string{
-			"HOME=/tmp",
-		},
+		Env: envVars,
 	}
 
 	// Host config
