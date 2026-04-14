@@ -116,6 +116,9 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 		Labels: map[string]string{
 			"session_id": sessionID,
 		},
+		Env: []string{
+			"HOME=/tmp",
+		},
 	}
 
 	// Host config
@@ -139,8 +142,13 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 			NanoCPUs:  cpu_cores,
 			PidsLimit: &pid_limits,
 		},
-		NetworkMode: "none", // no network
-		Init:        &init_allowed,
+		NetworkMode: func() container.NetworkMode {
+			if cfg.NetworkEnabled {
+				return "bridge"
+			}
+			return "none"
+		}(),
+		Init: &init_allowed,
 		Mounts: []mount.Mount{
 			{
 				Type:   mount.TypeBind,
@@ -154,8 +162,8 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 				Type:   mount.TypeTmpfs,
 				Target: "/tmp",
 				TmpfsOptions: &mount.TmpfsOptions{
-					SizeBytes: 64 * 1024 * 1024,
-					Mode:      0700,
+					SizeBytes: 256 * 1024 * 1024,
+					Mode:      01777,
 				},
 			},
 		},
