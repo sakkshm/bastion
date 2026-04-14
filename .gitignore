@@ -2,3 +2,4 @@ bin
 
 logs.json
 app.db
+.env

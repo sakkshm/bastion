@@ -8,7 +8,7 @@ max_concurrent_sessions = 10
 session_ttl_minutes = 10
 session_cleanup_interval_sec = 60
 working_directory_base = "./sessions"
-env_path=".env"
+env_path="./config/.env"
 
 [sandbox]
 enabled = true
