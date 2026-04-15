@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bastion Terminal</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #000;
+      overflow: hidden;
+    }
+
+    body {
+      display: flex;
+    }
+
+    #terminal {
+      flex: 1;
+    }
+
+    .status {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #0f0;
+      z-index: 10;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="status" id="status">Disconnected</div>
+  <div id="terminal"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
+
+  <script>
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      theme: { background: "#000" },
+      scrollback: 1000
+    });
+
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+
+    term.open(document.getElementById("terminal"));
+    fitAddon.fit();
+
+    const statusEl = document.getElementById("status");
+
+    let client_id = null;
+    let ws = null;
+
+    const session_id = prompt("Enter session ID");
+    const api_token = prompt("Enter API token")
+
+    function connect() {
+      if (!session_id) return;
+
+      ws = new WebSocket("ws://localhost:8080/session/" + session_id + "/terminal?api_token=" + api_token);
+
+      ws.onopen = () => {
+        statusEl.innerText = "Connected";
+        statusEl.style.color = "#0f0";
+
+        ws.send(JSON.stringify({
+          type: "init",
+          client_id: "",
+          session_id,
+          payload: {}
+        }));
+
+        term.writeln("Connected");
+      };
+
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "init") {
+          client_id = msg.client_id;
+          term.writeln("Session initialized");
+          term.writeln("Client ID: " + client_id);
+          return;
+        }
+
+        if (msg.type === "term_output") {
+          const out = msg.payload?.output || "";
+          term.write(out.replace(/\n/g, "\r\n"));
+          return;
+        }
+
+        if (msg.type === "error") {
+          term.writeln("\r\n[ERROR] " + msg.payload);
+          return;
+        }
+      };
+
+      ws.onclose = () => {
+        statusEl.innerText = "Disconnected";
+        statusEl.style.color = "red";
+        term.writeln("\r\nDisconnected");
+      };
+
+      ws.onerror = () => {
+        statusEl.innerText = "Error";
+        statusEl.style.color = "orange";
+      };
+    }
+
+    term.onData((data) => {
+      if (!client_id || !ws) return;
+
+      ws.send(JSON.stringify({
+        type: "term_input",
+        client_id,
+        session_id,
+        payload: {
+          input: data
+        }
+      }));
+    });
+
+    function sendResize() {
+      if (!client_id || !ws) return;
+
+      ws.send(JSON.stringify({
+        type: "resize",
+        client_id,
+        session_id,
+        payload: {
+          cols: term.cols,
+          rows: term.rows
+        }
+      }));
+    }
+
+    window.addEventListener("resize", () => {
+      fitAddon.fit();
+      sendResize();
+    });
+
+    connect();
+    setTimeout(sendResize, 500);
+  </script>
+</body>
+</html>
