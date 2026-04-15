@@ -8,6 +8,7 @@ const (
 	MsgInit           MessageType = "init"
 	MsgTerminalInput  MessageType = "term_input"
 	MsgTerminalOutput MessageType = "term_output"
+	MsgTerminalResize MessageType = "resize"
 	MsgErr            MessageType = "error"
 )
 

@@ -175,6 +175,18 @@ func (ws *WSManager) handleIncoming(msg WSMessage) {
 
 		ws.TerminalSession.Input <- termInput
 
+	case MsgTerminalResize:
+		var data struct {
+			Cols string `json:"cols"`
+			Rows string `json:"rows"`
+		}
+
+		_ = json.Unmarshal(msg.Payload, &data)
+
+		// TODO: Implement terminal resize
+
+		return
+
 	default:
 		ws.mu.RLock()
 		client, ok := ws.Clients[msg.ClientID]
