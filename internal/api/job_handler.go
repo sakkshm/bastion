@@ -142,8 +142,8 @@ func (h *Handler) TerminalHandler(w http.ResponseWriter, r *http.Request) {
 		termSess := websocket.TerminalSession{
 			TerminalResp: resp,
 			IsConnected:  true,
-			Input:        make(chan websocket.WSTermInputMsg),
-			Output:       make(chan websocket.WSTermOutputMsg),
+			Input:        make(chan websocket.WSTermInputMsg, 256),
+			Output:       make(chan websocket.WSTermOutputMsg, 256),
 			Ctx:          ctx,
 			Cancel:       cancel,
 		}

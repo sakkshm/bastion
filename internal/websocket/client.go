@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -18,11 +19,11 @@ type Client struct {
 
 func NewClient(conn *websocket.Conn, sessionID string) *Client {
 	return &Client{
-		Conn:     conn,
-		ClientID: generateClinetID(),
+		Conn:      conn,
+		ClientID:  generateClinetID(),
 		SessionID: sessionID,
-		Send:     make(chan WSMessage),
-		Closed:   false,
+		Send:      make(chan WSMessage, 256),
+		Closed:    false,
 	}
 }
 
@@ -72,7 +73,7 @@ func (c *Client) WritePump() {
 
 	for msg := range c.Send {
 		data, _ := json.Marshal(msg)
-
+		c.Conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 		err := c.Conn.WriteMessage(websocket.TextMessage, data)
 		if err != nil {
 			break

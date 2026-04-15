@@ -44,8 +44,7 @@ func (t *TerminalSession) TermInputPump() {
 }
 
 func (t *TerminalSession) TermOutputPump() {
-
-	buf := make([]byte, 1024)
+	buf := make([]byte, 4096)
 
 	for {
 		select {
@@ -57,14 +56,24 @@ func (t *TerminalSession) TermOutputPump() {
 				return
 			}
 
-			output := buf[:n]
-
-			// send to output
-			outputMsg := WSTermOutputMsg{
-				Output: string(output),
+			if n == 0 {
+				continue
 			}
 
-			t.Output <- outputMsg
+			output := string(buf[:n])
+
+			msg := WSTermOutputMsg{
+				Output: output,
+			}
+
+			// non blocking send
+			select {
+			case t.Output <- msg:
+			case <-t.Ctx.Done():
+				return
+			default:
+				
+			}
 		}
 	}
 }
