@@ -268,7 +268,7 @@ func (e *Engine) rebuildSession(
 ) (*session.Session, error) {
 
 	jobHandler := session.NewJobHandler()
-	wsManager := websocket.NewWSManager(id)
+	wsManager := websocket.NewWSManager(id, e.Sessions.Touch)
 
 	go wsManager.Run()
 

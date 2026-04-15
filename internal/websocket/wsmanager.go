@@ -26,6 +26,8 @@ type WSManager struct {
 	Ctx    context.Context
 	Cancel context.CancelFunc
 
+	Touch func(string) error
+
 	mu sync.RWMutex
 }
 
@@ -39,20 +41,22 @@ var Upgrader = websocket.Upgrader{
 	},
 }
 
-func NewWSManager(sessionID string) *WSManager {
+func NewWSManager(sessionID string, Touch func(string) error) *WSManager {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &WSManager{
 		SessionID:  sessionID,
 		Clients:    make(map[string]*Client),
-		Broadcast:  make(chan WSMessage),
-		Incoming:   make(chan WSMessage),
+		Broadcast:  make(chan WSMessage, 256),
+		Incoming:   make(chan WSMessage, 256),
 		Register:   make(chan *Client),
 		Unregister: make(chan *Client),
 
 		Ctx:    ctx,
 		Cancel: cancel,
+
+		Touch: Touch,
 	}
 }
 
@@ -154,6 +158,8 @@ func (ws *WSManager) handleIncoming(msg WSMessage) {
 		client.WriteErrToClient(fmt.Errorf("inavlid session id"))
 		return
 	}
+
+	_ = ws.Touch(ws.SessionID)
 
 	switch msg.Type {
 

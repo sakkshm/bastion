@@ -72,7 +72,7 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 	jobHandler := session.NewJobHandler()
 
 	// make a new WSManager
-	wsManager := websocket.NewWSManager(sessionID)
+	wsManager := websocket.NewWSManager(sessionID, h.Engine.Sessions.Touch)
 	go wsManager.Run()
 
 	sess := session.Session{
