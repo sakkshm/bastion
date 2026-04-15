@@ -91,9 +91,7 @@ func RunBastion(configPath string) {
 			r.Post(api.StopSessionEndpoint, routeHandler.StopSessionHandler)
 			r.Post(api.JobExecuteEndpoint, routeHandler.JobExecuteHandler)
 			r.Post(api.UploadFileEndpoint, routeHandler.UploadFileHandler)
-			
-			// WebSocket endpoint
-			r.Get(api.TerminalEndpoint, routeHandler.TerminalHandler) 
+
 		})
 
 		// Admin + Agent + Viewer routes (read operations)
@@ -106,8 +104,12 @@ func RunBastion(configPath string) {
 			r.Get(api.DownloadFileEndpoint, routeHandler.DownloadFileHandler)
 			r.Get(api.ListDirEndpoint, routeHandler.ListFilesHandler)
 		})
+
+		// WebSocket endpoint
+		r.With(auth.WSAuthMiddleware(auth.ScopeAdmin, auth.ScopeAgent)).With(routeHandler.SessionMiddleware).Get(api.TerminalEndpoint, routeHandler.TerminalHandler)
+
 	})
-	
+
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
 
 	srv := &http.Server{

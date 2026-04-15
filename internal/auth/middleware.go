@@ -61,3 +61,38 @@ func AuthMiddleware(allowedScopes ...Scope) func(http.Handler) http.Handler {
 		})
 	}
 }
+
+func WSAuthMiddleware(allowedScopes ...Scope) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+			apiKey := r.URL.Query().Get("api_token")
+			if apiKey == "" {
+				writeJSONError(w, http.StatusUnauthorized, "missing Authorization header")
+				return
+			}
+
+			scope, valid, err := ValidateAPIKeyWithScope(apiKey)
+			if err != nil || !valid {
+				writeJSONError(w, http.StatusUnauthorized, "invalid API key")
+				return
+			}
+
+			// check scope
+			allowed := false
+			for _, s := range allowedScopes {
+				if s == scope {
+					allowed = true
+					break
+				}
+			}
+
+			if !allowed {
+				writeJSONError(w, http.StatusForbidden, "forbidden: insufficient scope")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
