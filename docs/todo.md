@@ -1,69 +1,90 @@
 # TODO: 
 
-~~- add job timeout~~
-~~- Stream output to WS~~
-- WS stream dies unexpectedly
-- Add support for terminal resize
-- Add support for envs
-- Refactor handlers, they should only contain request related logic not actual business logic, that should be in utils, make abstraction better and consistent
-- make logging and errors consistent
-- add auth and api keys
-- write tests
-- improve resource cleanup
+## CRITICAL
 
-- Add dashboard type endpoint for admin to montior system
-- Add a latency check/benchmark system
-- Make sure only valid Session.status transition are allowed, (ex: deleted -> started not allowed)
+* ~~WS stream dies unexpectedly, its not working at all, it only disconnects when error in terminal~~
+* ~~Make API Token validation for WS~~
+* Ensure session state stays synced with actual container state
+* Ensure valid session status transitions only (no illegal state changes)
+* Make session + container actions atomic and consistent
+* Improve resource cleanup (no leaks, no zombie processes/containers)
+* Container lifecycle cleanup after TTL / deletion (GC-like behavior)
+* Improve logging consistency across system
+* Standardize error handling across all modules
+* Log execution metadata for all actions (command, latency, exit code, container/session IDs)
+* Write tests (unit + integration + container lifecycle tests)
+* Refactor handlers to only contain request logic (move business logic into services/utils layer)
+* Improve abstraction consistency across system
 
-- use postgres to store state
-- Make sure state is synced with system reality eg: if conatiner/fs is deleted, the session should also die
+## EXECUTION ENGINE
 
-- Look into options for cmd exec
-```
-type ExecOptions struct {
-    User         string   // User that will run the command
-    Privileged   bool     // Is the container in privileged mode
-    Tty          bool     // Attach standard streams to a tty.
-    ConsoleSize  *[2]uint `json:",omitempty"` // Initial console size [height, width]
-    AttachStdin  bool     // Attach the standard input, makes possible user interaction
-    AttachStderr bool     // Attach the standard error
-    AttachStdout bool     // Attach the standard output
-    DetachKeys   string   // Escape keys for detach
-    Env          []string // Environment variables
-    WorkingDir   string   // Working directory
-    Cmd          []string // Execution commands and args
-}
-```
-- Look into hostconfig.pidmode, ipcmode, utsmode, cgroupmode
-- Look into improving Hostconfig, conatinerconfig, network config
+* Add support for terminal resize
+* Improve ExecOptions support and flexibility (TTY, env, working dir, user, streams, privileged mode)
+* Explore host config improvements (pidmode, ipcmode, utsmode, cgroup mode)
+* Improve containerconfig / hostconfig / networkconfig structure
+* Add support for Docker-in-Docker
+* Add event-driven updates via Docker events
 
-~~- Make a container GC - Remove conatiners after TTL~~
-~~- GC Remove conatiners once marked deleted~~
+## CONTAINER LIFECYCLE & PERFORMANCE
 
-- add a container pool per session
-- instead of persistent conatiners, think of conatiners as persistent compute pools and state is stored in volumes/mounts
-- Container creation is extremely slow, maybe look into making a conatiner pool and then assigning one on session creation
-- Docker Containers can change state independetly and make Session.status stale, make some way to chage Session.status when Docker changes state
-- Refactor code to make session data and docker container data always consistent, and make actions atomic
+* Add container pooling per session (warm pool model)
+* Treat containers as compute pools, not persistent state
+* Optimize container startup via pre-warmed Node/Python images
+* Add prebuilt Node.js and Python sandbox images
+* Support custom user-provided Docker images
+* Support dynamic image selection at session creation
 
-- Add comments/docs explaining handlers and flows
-- Write a writeup on how this project uses docker and container isolation
+## SNAPSHOTS & STATE SYSTEM
 
+* Add snapshot system (save / restore / resume workflows instantly)
+* Add session forking support
+* Move toward volume-based state instead of container persistence
+* Add environment snapshots for reproducible workflows
 
+## NETWORKING & ISOLATION
 
-# Reading list
+* Add network allowlist / denylist per session
+* Add custom DNS configuration support
+* Add internet access logging
+* Improve network isolation controls
 
-- runc internals
-- containerd architecture
-- gVisor syscall interception
-- Firecracker microVMs
-- Linux seccomp BPF filters
-- Linux cgroups v2
-- Look into Namespaces, Cgroups (CPU/Memory/PID limits), Seccomp syscall filtering, Linux capability dropping, Read-only root filesystem with writable sandbox mount, Network isolation, No-new-privileges, User namespace remapping (rootless containers), Filesystem mount restrictions, Device access restrictions, Execution timeouts
-- learn about kernel level sandboxing, LXC componenets, cgroups, namespaces, seccomp, etc.
-- Make an eBPF based tool for Bastion to help with sandboxing, conatiner sec/isolation/monitoring, enforcing network policy, loadbalancing, bandwidth management, sec and ops analysis. 
-- Look into Linux seccomp BPF filters
-- think about serverless, elastic infra, k8s compatible
-- Read [Cisco-Cilium PPT](https://www.ciscolive.com/c/dam/r/ciscolive/global-event/docs/2025/pdf/DEVNET-2927.pdf) to get product inspo
-- consider using cgroups or pid namespaces for job isolation and preventing escape. consider setsid, disown, double fork.
-- look into /proc cleanup for zombie/orphan processes.
+## DEV EXPERIENCE & PLATFORM FEATURES
+
+* Add Git operations (clone, pull minimum)
+* Make dependency installation easy (pip / npm inside sandbox)
+* Add full web terminal (low-latency browser terminal)
+* Add SDKs (Python, TypeScript)
+* Add Dockerfile for project
+* Add admin dashboard endpoint for system monitoring
+* Add latency benchmarking system
+* Add documentation/comments for system flows
+* Write technical architecture write-up (Docker + isolation design)
+
+## INFRASTRUCTURE & DEPLOYMENT
+
+* Add Infrastructure-as-Code (IaC) for cloud deployment
+* Improve system for self-hosting on cloud platforms
+* Design for Kubernetes compatibility and elastic scaling
+
+## AI / WORKLOAD USE CASE LAYER
+
+* AI code execution / code interpreter support
+* Data analysis & visualization sandbox
+* Coding agents with persistent execution state
+* Reinforcement learning environments (large-scale parallel sandboxes)
+* Computer-use agents (desktop-like sandbox automation)
+* Vibe coding runtime (run full apps in sandbox)
+* Large dataset research workflows in isolated environments
+
+## SECURITY & SYSTEMS RESEARCH
+
+* runc internals
+* containerd architecture
+* gVisor syscall interception
+* Firecracker microVMs
+* Linux namespaces (PID, IPC, UTS, network)
+* cgroups v2 resource control
+* seccomp BPF filtering
+* LXC components
+* eBPF-based sandbox monitoring and enforcement system
+* Kubernetes-style orchestration patterns
