@@ -142,42 +142,40 @@ func (fs *FSWorkspace) DeleteWorkspace() error {
 
 func (fs *FSWorkspace) SafePath(rel string) (string, error) {
 
-	// Normalize input
+	if strings.Contains(rel, "..") {
+		return "", fmt.Errorf("invalid path")
+	}
+
 	rel = filepath.Clean("/" + rel)
 	rel = strings.TrimPrefix(rel, "/")
 
 	full := filepath.Join(fs.Mount, rel)
 	full = filepath.Clean(full)
 
-	// Resolve mount once
 	mountResolved, err := filepath.EvalSymlinks(fs.Mount)
 	if err != nil {
 		return "", fmt.Errorf("invalid mount")
 	}
 
-	// ROOT CASE
 	if full == fs.Mount {
 		return mountResolved, nil
 	}
 
-	// Pre-check (cheap containment)
 	relPath, err := filepath.Rel(mountResolved, full)
 	if err != nil || strings.HasPrefix(relPath, "..") {
 		return "", fmt.Errorf("invalid path")
 	}
 
-	// Resolve symlinks ONLY if path exists
-	resolved := full
-	if _, err := os.Lstat(full); err == nil {
-		resolved, err = filepath.EvalSymlinks(full)
-		if err != nil {
-			return "", fmt.Errorf("invalid path")
-		}
+	dir := filepath.Dir(full)
+	resolvedDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", fmt.Errorf("invalid path")
 	}
 
-	// Final containment check
-	relPath, err = filepath.Rel(mountResolved, resolved)
-	if err != nil || strings.HasPrefix(relPath, "..") {
+	resolved := filepath.Join(resolvedDir, filepath.Base(full))
+
+	if !strings.HasPrefix(resolved, mountResolved+string(os.PathSeparator)) &&
+		resolved != mountResolved {
 		return "", fmt.Errorf("path escapes sandbox")
 	}
 

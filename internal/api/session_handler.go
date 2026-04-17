@@ -267,6 +267,11 @@ func (h *Handler) GetSessionStatusHandler(w http.ResponseWriter, r *http.Request
 		err             error
 	)
 
+	if sess.Status == session.StatusDeleted {
+		writeJSONError(w, http.StatusInternalServerError, "session was deleted")
+		return
+	}
+
 	// sync status if not deleted
 	if sess.Status != session.StatusDeleted {
 		containerStatus, err = h.Engine.Docker.GetContainerStatus(

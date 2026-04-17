@@ -130,17 +130,17 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 	}
 
 	// Container config
-	config := &container.Config{
-		Image:        cfg.Image,
-		Tty:          true, // Allocate Terminal
-		OpenStdin:    true,
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		StdinOnce:    false,                         // keep stdin open for terminal
-		Cmd:          []string{"sleep", "infinity"}, // Deafault Shell
-		WorkingDir:   "/workspace",
-		User:         "1000:1000",
+	containerConfig := &container.Config{
+		Image:           cfg.Image,
+		Tty:             true, // Allocate Terminal
+		OpenStdin:       true,
+		AttachStdin:     true,
+		AttachStdout:    true,
+		AttachStderr:    true,
+		StdinOnce:       false,                         // keep stdin open for terminal
+		Cmd:             []string{"sleep", "infinity"}, // Deafault Shell
+		WorkingDir:      "/workspace",
+		User:            "1000:1000",
 		Labels: map[string]string{
 			"session_id": sessionID,
 		},
@@ -159,7 +159,6 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 	}
 
 	hostConfig := &container.HostConfig{
-		// AutoRemove:     true,                       // automatically remove when stopped
 		ReadonlyRootfs: true,                          // cannot change anything in root fs
 		SecurityOpt:    []string{"no-new-privileges"}, // deny privilege escalation
 		CapDrop:        []string{"ALL"},               // drop all linux capabilitites
@@ -195,14 +194,16 @@ func (d *DockerClient) CreateSandboxContainer(ctx context.Context, cfg Container
 		},
 	}
 
+	conatinerName := fmt.Sprintf("session-%s", sessionID)
+
 	// Create Container
 	resp, err := d.APIClient.ContainerCreate(
 		ctx,
-		config,
+		containerConfig,
 		hostConfig,
 		&network.NetworkingConfig{},
 		nil,
-		fmt.Sprintf("session-%s", sessionID),
+		conatinerName,
 	)
 	if err != nil {
 		return "", err
