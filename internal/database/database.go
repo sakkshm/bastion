@@ -31,3 +31,8 @@ func NewDBConn() (*DatabaseConn, error) {
 func (db *DatabaseConn) Close() error {
 	return db.Database.Close()
 }
+
+func (db *DatabaseConn) HealthCheck() bool {
+	err := db.Database.Ping()
+	return err == nil
+}

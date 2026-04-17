@@ -20,6 +20,11 @@ type Engine struct {
 	Config   *config.Config
 }
 
+type HealthCheck struct {
+	DockerHealthy   bool
+	DatabaseHealthy bool
+}
+
 func NewEngine(cfg *config.Config, logger *slog.Logger) (*Engine, error) {
 	logger.Info("Initializing Docker Client")
 	dockerClient, err := docker.NewDockerClient()
@@ -72,6 +77,13 @@ func (e *Engine) Close() error {
 	}
 
 	return nil
+}
+
+func (e Engine) HealthCheck() HealthCheck {
+	return HealthCheck{
+		DockerHealthy: e.Docker.HealthCheck(),
+		DatabaseHealthy: e.Database.HealthCheck(),
+	}
 }
 
 func (e *Engine) AttachWorker(sess *session.Session) {

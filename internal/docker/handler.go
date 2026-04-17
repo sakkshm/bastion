@@ -41,6 +41,14 @@ func (d *DockerClient) CloseClient() error {
 	return d.APIClient.Close()
 }
 
+func (d *DockerClient) HealthCheck() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := d.APIClient.Ping(ctx)
+	return err == nil
+}
+
 func (d *DockerClient) ContainerExists(containerID string) (bool, error) {
 	if containerID == "" {
 		return false, errors.New("containerID cannot be empty")
