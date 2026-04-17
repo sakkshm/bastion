@@ -121,4 +121,3 @@ func (sm *SessionManager) UpdateSessionStatusData(id string, status Status) erro
 		return err
 	})
 }
-

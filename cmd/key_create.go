@@ -11,7 +11,7 @@ var name string
 var scope string
 
 var keyCreateCmd = &cobra.Command{
-	Use: "create",
+	Use:   "create",
 	Short: "Create API keys",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("Creating key: %s with scope: %s", name, scope)

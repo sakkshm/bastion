@@ -110,7 +110,7 @@ func CreateAPIKey(name string, scope string) error {
 	parsedScope, err := ParseScope(scope)
 	if err != nil {
 		return errors.New("invalid scope")
-	} 
+	}
 
 	publicID, secret, fullKey, err := GenerateAPIKey()
 	if err != nil {

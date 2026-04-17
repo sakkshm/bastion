@@ -59,7 +59,7 @@ type FileDeleteResponse struct {
 }
 
 type ListFileResponse struct {
-    Files []filesystem.FileEntry `json:"files"`
+	Files []filesystem.FileEntry `json:"files"`
 }
 
 type APIError struct {

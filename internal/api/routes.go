@@ -27,8 +27,8 @@ const (
 
 // FileSystem Endpoints
 const (
-	UploadFileEndpoint = "/upload"
+	UploadFileEndpoint   = "/upload"
 	DownloadFileEndpoint = "/download"
-	DeleteFileEndpoint = "/delete"
-	ListDirEndpoint = "/list"
+	DeleteFileEndpoint   = "/delete"
+	ListDirEndpoint      = "/list"
 )

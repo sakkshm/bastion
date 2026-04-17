@@ -5,17 +5,17 @@ type JobExecRequest struct {
 }
 
 type UploadMetadata struct {
-    Path string `json:"path"`
+	Path string `json:"path"`
 }
 
 type DownloadRequest struct {
-    Path string `json:"path"`
+	Path string `json:"path"`
 }
 
 type DeleteRequest struct {
-    Path string `json:"path"`
+	Path string `json:"path"`
 }
 
 type ListFileRequest struct {
-    Path string `json:"path"`
+	Path string `json:"path"`
 }

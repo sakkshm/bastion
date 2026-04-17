@@ -72,7 +72,7 @@ func (t *TerminalSession) TermOutputPump() {
 			case <-t.Ctx.Done():
 				return
 			default:
-				
+
 			}
 		}
 	}

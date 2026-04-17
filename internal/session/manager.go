@@ -52,12 +52,12 @@ func (sm *SessionManager) BatchAdd(sessions []Session) error {
 	defer sm.mu.Unlock()
 
 	// TODO: unoptimised, fix this, make a batch add db handler
-	for _, s := range sessions{
+	for _, s := range sessions {
 		err := sm.AddSessionData(&s)
 		if err != nil {
 			return err
 		}
-	
+
 		sm.sessions[s.ID] = &s
 	}
 	return nil
