@@ -116,6 +116,67 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIError"
+  /session/{id}/exec:
+    post:
+      summary: Execute a command in the session
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobExecRequest"
+      responses:
+        "200":
+          description: Job queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobExecResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        "403":
+          description: Session not running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /session/{id}/job/{job_id}:
+    get:
+      summary: Get job status
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: Job status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobStatusResponse"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /session/{id}/terminal:
+    get:
+      summary: WebSocket terminal connection
+      description: Upgrades connection to WebSocket
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      responses:
+        "101":
+          description: Switching Protocols
+
 
 components:
 
@@ -132,11 +193,22 @@ components:
       schema:
         type: string
 
+    JobID:
+      name: job_id
+      in: path
+      required: true
+      schema:
+        type: string
+
   schemas:
 
     SessionStatus:
       type: string
       enum: [created, running, stopped, deleted, busy]
+
+    JobStatus:
+      type: string
+      enum: [queued, running, completed, failed]
 
     CreateSessionResponse:
       type: object
@@ -172,6 +244,51 @@ components:
           type: string
         status:
           $ref: "#/components/schemas/SessionStatus"
+
+    JobExecRequest:
+      type: object
+      required: [cmd]
+      properties:
+        cmd:
+          type: array
+          items:
+            type: string
+
+    JobExecResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          $ref: "#/components/schemas/JobStatus"
+
+    JobStatusResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        cmd:
+          type: array
+          items:
+            type: string
+        status:
+          $ref: "#/components/schemas/JobStatus"
+        created_at:
+          type: string
+          format: date-time
+        output:
+          $ref: "#/components/schemas/JobOutputResponse"
+          nullable: true
+
+    JobOutputResponse:
+      type: object
+      properties:
+        console_output:
+          type: string
+        errout:
+          type: string
+        status_code:
+          type: integer
 
     APIError:
       type: object
