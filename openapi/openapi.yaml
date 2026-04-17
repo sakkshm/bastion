@@ -12,6 +12,8 @@ paths:
 
   /health:
     get:
+      tags: [system]
+      operationId: healthCheck
       summary: Health check for services
       security: []
       responses:
@@ -20,6 +22,8 @@ paths:
 
   /session/create:
     post:
+      tags: [sessions]
+      operationId: createSession
       summary: Create session
       responses:
         "201":
@@ -43,6 +47,8 @@ paths:
 
   /session/{id}/start:
     post:
+      tags: [sessions]
+      operationId: startSession
       summary: Start a session
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -62,6 +68,8 @@ paths:
 
   /session/{id}/stop:
     post:
+      tags: [sessions]
+      operationId: stopSession
       summary: Stop a session
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -81,6 +89,8 @@ paths:
 
   /session/{id}/status:
     get:
+      tags: [sessions]
+      operationId: getSessionStatus
       summary: Get session status
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -100,6 +110,8 @@ paths:
 
   /session/{id}:
     delete:
+      tags: [sessions]
+      operationId: deleteSession
       summary: Delete a session
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -119,6 +131,8 @@ paths:
 
   /session/{id}/exec:
     post:
+      tags: [jobs]
+      operationId: executeCommand
       summary: Execute a command in the session
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -150,6 +164,8 @@ paths:
 
   /session/{id}/job/{job_id}:
     get:
+      tags: [jobs]
+      operationId: getJobStatus
       summary: Get job status
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -170,6 +186,8 @@ paths:
 
   /session/{id}/terminal:
     get:
+      tags: [terminal]
+      operationId: connectTerminal
       summary: WebSocket terminal connection
       description: Upgrades connection to WebSocket
       parameters:
@@ -180,6 +198,8 @@ paths:
 
   /session/{id}/upload:
     post:
+      tags: [files]
+      operationId: uploadFile
       summary: Upload file
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -210,6 +230,8 @@ paths:
 
   /session/{id}/download:
     get:
+      tags: [files]
+      operationId: downloadFile
       summary: Download file
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -231,6 +253,8 @@ paths:
 
   /session/{id}/delete:
     post:
+      tags: [files]
+      operationId: deleteFile
       summary: Delete file
       parameters:
         - $ref: "#/components/parameters/SessionID"
@@ -250,6 +274,8 @@ paths:
 
   /session/{id}/list:
     get:
+      tags: [files]
+      operationId: listFiles
       summary: List files (paginated)
       parameters:
         - $ref: "#/components/parameters/SessionID"
