@@ -1,0 +1,180 @@
+openapi: 3.0.3
+
+info:
+  title: Bastion API
+  version: 1.0.0
+  description: Sandbox Runtime Environment API
+
+security:
+  - BearerAuth: []
+
+paths:
+
+  /health:
+    get:
+      summary: Health check for services
+      security: []
+      responses:
+        "200":
+          description: OK
+
+  /session/create:
+    post:
+      summary: Create session
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateSessionResponse"
+        "429":
+          description: Maximum sessions reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /session/{id}/start:
+    post:
+      summary: Start a session
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      responses:
+        "200":
+          description: Session started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetSessionStatusResponse"
+        "500":
+          description: Failed to start session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /session/{id}/stop:
+    post:
+      summary: Stop a session
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      responses:
+        "200":
+          description: Session stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetSessionStatusResponse"
+        "500":
+          description: Failed to stop session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /session/{id}/status:
+    get:
+      summary: Get session status
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      responses:
+        "200":
+          description: Session status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetSessionStatusResponse"
+        "500":
+          description: Failed to get session status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /session/{id}:
+    delete:
+      summary: Delete a session
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      responses:
+        "200":
+          description: Session deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteSessionResponse"
+        "500":
+          description: Failed to delete session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+
+  parameters:
+    SessionID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+
+    SessionStatus:
+      type: string
+      enum: [created, running, stopped, deleted, busy]
+
+    CreateSessionResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+        status:
+          $ref: "#/components/schemas/SessionStatus"
+        created_at:
+          type: string
+          format: date-time
+
+    GetSessionStatusResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        container_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        status:
+          $ref: "#/components/schemas/SessionStatus"
+
+    DeleteSessionResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+        status:
+          $ref: "#/components/schemas/SessionStatus"
+
+    APIError:
+      type: object
+      properties:
+        error:
+          type: string
