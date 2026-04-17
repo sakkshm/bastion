@@ -116,6 +116,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIError"
+
   /session/{id}/exec:
     post:
       summary: Execute a command in the session
@@ -177,6 +178,105 @@ paths:
         "101":
           description: Switching Protocols
 
+  /session/{id}/upload:
+    post:
+      summary: Upload file
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, metadata]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+      responses:
+        "200":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileUploadResponse"
+        "400":
+          description: Invalid request
+        "409":
+          description: File exists
+
+  /session/{id}/download:
+    get:
+      summary: Download file
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: File not found
+
+  /session/{id}/delete:
+    post:
+      summary: Delete file
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeleteRequest"
+      responses:
+        "200":
+          description: File deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileDeleteResponse"
+
+  /session/{id}/list:
+    get:
+      summary: List files (paginated)
+      parameters:
+        - $ref: "#/components/parameters/SessionID"
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 10
+      responses:
+        "200":
+          description: File list (paginated)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListFileResponse"
 
 components:
 
@@ -289,6 +389,58 @@ components:
           type: string
         status_code:
           type: integer
+
+    FileUploadResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        path:
+          type: string
+
+    FileDeleteResponse:
+      type: object
+      properties:
+        status:
+          type: string
+
+    ListFileResponse:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        total_pages:
+          type: integer
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileEntry"
+
+    FileEntry:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        is_dir:
+          type: boolean
+        size:
+          type: integer
+        modified_at:
+          type: string
+          format: date-time
+
+    DeleteRequest:
+      type: object
+      required: [path]
+      properties:
+        path:
+          type: string
 
     APIError:
       type: object
