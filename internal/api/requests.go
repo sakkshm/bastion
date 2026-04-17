@@ -18,4 +18,6 @@ type DeleteRequest struct {
 
 type ListFileRequest struct {
 	Path string `json:"path"`
+	Page string `json:"page"`
+	Limit string `json:"limit"`
 }

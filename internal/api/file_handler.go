@@ -7,7 +7,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 
+	"github.com/sakkshm/bastion/internal/filesystem"
 	"github.com/sakkshm/bastion/internal/session"
 )
 
@@ -312,10 +315,37 @@ func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
 	// extract query params into struct
 	var req ListFileRequest
 	req.Path = r.URL.Query().Get("path")
+	req.Page = r.URL.Query().Get("page")
+	req.Limit = r.URL.Query().Get("limit")
 
 	if req.Path == "" {
 		writeJSONError(w, http.StatusBadRequest, "Path required")
 		return
+	}
+
+	// FIX: safely parse page/limit (your struct likely has int fields)
+	page := 1
+	limit := 10
+
+	if req.Page != "" {
+		if p, err := strconv.Atoi(req.Page); err == nil {
+			page = p
+		}
+	}
+	if req.Limit != "" {
+		if l, err := strconv.Atoi(req.Limit); err == nil {
+			limit = l
+		}
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
 	}
 
 	// check if safe
@@ -375,13 +405,44 @@ func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
 			"path", req.Path,
 			"err", err,
 		)
-		writeJSONError(w, http.StatusNotFound, "Unable to list directory")
+		writeJSONError(w, http.StatusInternalServerError, "Unable to list directory")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(ListFileResponse{
-		Files: fileDetails,
+	sort.Slice(fileDetails, func(i, j int) bool {
+		return fileDetails[i].Name < fileDetails[j].Name
 	})
 
+	total := len(fileDetails)
+
+	start := (page - 1) * limit
+	if start > total {
+		start = total
+	}
+
+	end := start + limit
+	if end > total {
+		end = total
+	}
+
+	totalPages := (total + limit - 1) / limit
+	if total == 0 {
+		totalPages = 0
+	}
+
+	files := []filesystem.FileEntry{}
+	if start < end {
+		files = fileDetails[start:end]
+	}
+
+	response := ListFileResponse{
+		Page:       page,
+		Limit:      limit,
+		Total:      total,
+		TotalPages: totalPages,
+		Files:      files,
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }

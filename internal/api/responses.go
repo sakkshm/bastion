@@ -65,6 +65,10 @@ type FileDeleteResponse struct {
 }
 
 type ListFileResponse struct {
+	Page int `json:"page"`
+	Limit int `json:"limit"`
+	Total int `json:"total"`
+	TotalPages int `json:"total_pages"`
 	Files []filesystem.FileEntry `json:"files"`
 }
 
