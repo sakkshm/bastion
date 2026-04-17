@@ -22,20 +22,20 @@ func (h *Handler) JobExecuteHandler(w http.ResponseWriter, r *http.Request) {
 
 	// make sure session is running
 	if sess.Status != session.StatusRunning {
-		writeJSONError(w, http.StatusForbidden, "container not started")
+		writeJSONError(w, http.StatusForbidden, "Container not started")
 		return
 	}
 
 	// extract req body
 	var req JobExecRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body")
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	defer r.Body.Close()
 
 	if req.Cmd == nil {
-		writeJSONError(w, http.StatusBadRequest, "command required")
+		writeJSONError(w, http.StatusBadRequest, "Command required")
 		return
 	}
 
@@ -76,7 +76,7 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	jobID := chi.URLParam(r, "job_id")
 	if jobID == "" {
-		writeJSONError(w, http.StatusBadRequest, "invalid job id")
+		writeJSONError(w, http.StatusBadRequest, "Invalid job id")
 		return
 	}
 
@@ -90,7 +90,7 @@ func (h *Handler) GetJobStatusHandler(w http.ResponseWriter, r *http.Request) {
 
 	job, ok := sess.JobHandler.Get(jobID)
 	if !ok {
-		writeJSONError(w, http.StatusForbidden, "job does not exist")
+		writeJSONError(w, http.StatusNotFound, "Job does not exist")
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *Handler) TerminalHandler(w http.ResponseWriter, r *http.Request) {
 
 		resp, err := h.Engine.Docker.StartTerminalSession(ctx, sess.ContainerID)
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "unable to start terminal session")
+			writeJSONError(w, http.StatusInternalServerError, "Unable to start terminal session")
 			cancel()
 			return
 		}
@@ -150,14 +150,14 @@ func (h *Handler) TerminalHandler(w http.ResponseWriter, r *http.Request) {
 
 		err = h.Engine.Sessions.AddTerminalSession(sess.ID, &termSess)
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "unable to start terminal session")
+			writeJSONError(w, http.StatusInternalServerError, "Unable to start terminal session")
 			cancel()
 			return
 		}
 
 		newSess, ok := h.Engine.Sessions.Get(sess.ID)
 		if !ok {
-			writeJSONError(w, http.StatusInternalServerError, "unable to find session")
+			writeJSONError(w, http.StatusInternalServerError, "Unable to find session")
 			cancel()
 			return
 		}
@@ -175,7 +175,7 @@ func (h *Handler) TerminalHandler(w http.ResponseWriter, r *http.Request) {
 			"session_id", sess.ID,
 			"error", err,
 		)
-		writeJSONError(w, http.StatusInternalServerError, "failed to upgrade websocket conn")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to upgrade websocket conn")
 		return
 	}
 

@@ -24,14 +24,14 @@ func AuthMiddleware(allowedScopes ...Scope) func(http.Handler) http.Handler {
 
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				writeJSONError(w, http.StatusUnauthorized, "missing Authorization header")
+				writeJSONError(w, http.StatusUnauthorized, "Missing Authorization header")
 				return
 			}
 
 			// Expect: Bearer <key>
 			parts := strings.Split(authHeader, " ")
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				writeJSONError(w, http.StatusUnauthorized, "invalid Authorization format")
+				writeJSONError(w, http.StatusUnauthorized, "Invalid Authorization format")
 				return
 			}
 
@@ -39,7 +39,7 @@ func AuthMiddleware(allowedScopes ...Scope) func(http.Handler) http.Handler {
 
 			scope, valid, err := ValidateAPIKeyWithScope(apiKey)
 			if err != nil || !valid {
-				writeJSONError(w, http.StatusUnauthorized, "invalid API key")
+				writeJSONError(w, http.StatusUnauthorized, "Invalid API key")
 				return
 			}
 
@@ -53,7 +53,7 @@ func AuthMiddleware(allowedScopes ...Scope) func(http.Handler) http.Handler {
 			}
 
 			if !allowed {
-				writeJSONError(w, http.StatusForbidden, "forbidden: insufficient scope")
+				writeJSONError(w, http.StatusForbidden, "Forbidden: insufficient scope")
 				return
 			}
 
@@ -68,13 +68,13 @@ func WSAuthMiddleware(allowedScopes ...Scope) func(http.Handler) http.Handler {
 
 			apiKey := r.URL.Query().Get("api_token")
 			if apiKey == "" {
-				writeJSONError(w, http.StatusUnauthorized, "missing Authorization header")
+				writeJSONError(w, http.StatusUnauthorized, "Missing Authorization header")
 				return
 			}
 
 			scope, valid, err := ValidateAPIKeyWithScope(apiKey)
 			if err != nil || !valid {
-				writeJSONError(w, http.StatusUnauthorized, "invalid API key")
+				writeJSONError(w, http.StatusUnauthorized, "Invalid API key")
 				return
 			}
 
@@ -88,7 +88,7 @@ func WSAuthMiddleware(allowedScopes ...Scope) func(http.Handler) http.Handler {
 			}
 
 			if !allowed {
-				writeJSONError(w, http.StatusForbidden, "forbidden: insufficient scope")
+				writeJSONError(w, http.StatusForbidden, "Forbidden: insufficient scope")
 				return
 			}
 

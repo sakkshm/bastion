@@ -22,7 +22,7 @@ func (e *Engine) ReconcileAllSessions() error {
 	for rows.Next() {
 		s, invalidID, err := e.reconcileRow(rows)
 		if err != nil {
-			e.Logger.Error("failed to reconcile session", "err", err)
+			e.Logger.Error("Failed to reconcile session", "err", err)
 			continue
 		}
 
@@ -76,7 +76,8 @@ func (e *Engine) reconcileRow(rows *sql.Rows) (*session.Session, string, error) 
 
 	ok, err := e.Docker.ContainerExists(containerID)
 	if err != nil || !ok {
-		e.Logger.Warn("dropping session: missing container",
+		e.Logger.Warn(
+			"Dropping session: missing container",
 			"session", id,
 			"container", containerID,
 			"err", err,
@@ -86,7 +87,8 @@ func (e *Engine) reconcileRow(rows *sql.Rows) (*session.Session, string, error) 
 
 	ok, err = filesystem.SessionFSExist(*e.Config, id)
 	if err != nil || !ok {
-		e.Logger.Warn("dropping session: missing filesystem",
+		e.Logger.Warn(
+			"Dropping session: missing filesystem",
 			"session", id,
 			"err", err,
 		)

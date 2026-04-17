@@ -17,7 +17,7 @@ func (h *Handler) UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 
 	sess, ok := r.Context().Value(SessionContextKey).(*session.Session)
 	if !ok {
-		writeJSONError(w, http.StatusInternalServerError, "session context missing")
+		writeJSONError(w, http.StatusInternalServerError, "Session context missing")
 		return
 	}
 
@@ -28,22 +28,12 @@ func (h *Handler) UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	maxSizeMB := h.Engine.Config.FileSystem.MaxUploadSize
 	err := r.ParseMultipartForm(int64(maxSizeMB) << 20)
 	if err != nil {
-		h.Engine.Logger.Error(
-			"Cannot parse form",
-			"session_id", sess.ID,
-			"error", err,
-		)
 		writeJSONError(w, http.StatusBadRequest, "Cannot parse form")
 		return
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-		h.Engine.Logger.Error(
-			"Failed to retrieve file",
-			"session_id", sess.ID,
-			"error", err,
-		)
 		writeJSONError(w, http.StatusBadRequest, "Failed to retrieve file")
 		return
 	}
@@ -65,11 +55,6 @@ func (h *Handler) UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	var meta UploadMetadata
 	err = json.Unmarshal([]byte(metadataStr), &meta)
 	if err != nil {
-		h.Engine.Logger.Error(
-			"Invalid metadata",
-			"session_id", sess.ID,
-			"error", err,
-		)
 		writeJSONError(w, http.StatusBadRequest, "Invalid metadata")
 		return
 	}
@@ -161,7 +146,7 @@ func (h *Handler) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	req.Path = r.URL.Query().Get("path")
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required")
+		writeJSONError(w, http.StatusBadRequest, "Path required")
 		return
 	}
 
@@ -187,6 +172,7 @@ func (h *Handler) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 				"File does not exist",
 				"session_id", sess.ID,
 				"path", req.Path,
+				"error", err,
 			)
 			writeJSONError(w, http.StatusNotFound, "File does not exist")
 		} else {
@@ -202,7 +188,7 @@ func (h *Handler) DownloadFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if info.IsDir() {
-		writeJSONError(w, http.StatusBadRequest, "Path is a directory")
+		writeJSONError(w, http.StatusForbidden, "Path is a directory")
 		return
 	}
 
@@ -235,13 +221,13 @@ func (h *Handler) DeleteFileHandler(w http.ResponseWriter, r *http.Request) {
 	// extract body into struct
 	var req DeleteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSONError(w, http.StatusBadRequest, "invalid request body")
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
 		return
 	}
 	defer r.Body.Close()
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required")
+		writeJSONError(w, http.StatusBadRequest, "Path required")
 		return
 	}
 
@@ -260,7 +246,7 @@ func (h *Handler) DeleteFileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if deletePath == sess.FileSystem.Mount {
-		writeJSONError(w, http.StatusBadRequest, "cannot delete root directory")
+		writeJSONError(w, http.StatusForbidden, "Cannot delete root directory")
 		return
 	}
 
@@ -272,6 +258,7 @@ func (h *Handler) DeleteFileHandler(w http.ResponseWriter, r *http.Request) {
 				"File does not exist",
 				"session_id", sess.ID,
 				"path", req.Path,
+				"error", err,
 			)
 			writeJSONError(w, http.StatusNotFound, "File does not exist")
 		} else {
@@ -327,7 +314,7 @@ func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
 	req.Path = r.URL.Query().Get("path")
 
 	if req.Path == "" {
-		writeJSONError(w, http.StatusBadRequest, "path required")
+		writeJSONError(w, http.StatusBadRequest, "Path required")
 		return
 	}
 
@@ -353,6 +340,7 @@ func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
 				"Directory does not exist",
 				"session_id", sess.ID,
 				"path", req.Path,
+				"error", err,
 			)
 			writeJSONError(w, http.StatusNotFound, "Directory does not exist")
 		} else {
@@ -373,8 +361,9 @@ func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
 			"Path is not a Directory",
 			"session_id", sess.ID,
 			"path", req.Path,
+			"error", err,
 		)
-		writeJSONError(w, http.StatusNotFound, "Path is not a Directory")
+		writeJSONError(w, http.StatusForbidden, "Path is not a Directory")
 		return
 	}
 
@@ -384,7 +373,7 @@ func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
 			"Unable to list directory",
 			"session_id", sess.ID,
 			"path", req.Path,
-			"err", err.Error(),
+			"err", err,
 		)
 		writeJSONError(w, http.StatusNotFound, "Unable to list directory")
 		return

@@ -18,7 +18,7 @@ func (h *Handler) SessionMiddleware(next http.Handler) http.Handler {
 
 		id := chi.URLParam(r, "id")
 		if id == "" {
-			writeJSONError(w, http.StatusBadRequest, "invalid session id")
+			writeJSONError(w, http.StatusBadRequest, "Invalid session id")
 			return
 		}
 

@@ -17,7 +17,10 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 
 	// check if max concurrent sessions reached
 	if h.Engine.Sessions.Count() >= h.Engine.Config.Execution.MaxConcurrent {
-		h.Engine.Logger.Error("Maximum sessions reached", "error", "max_sessions_reached")
+		h.Engine.Logger.Error(
+			"Maximum sessions reached",
+			"error", "max_sessions_reached",
+		)
 		writeJSONError(w, http.StatusTooManyRequests, "Maximum sessions reached")
 		return
 	}

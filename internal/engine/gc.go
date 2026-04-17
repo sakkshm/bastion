@@ -38,16 +38,20 @@ func (e *Engine) cleanupSessions(ttl time.Duration) {
 
 		err := e.Docker.DeleteContainer(context.Background(), session.ContainerID)
 		if err != nil {
-			e.Logger.Error("Unable to delete docker container",
+			e.Logger.Error(
+				"Unable to delete docker container",
 				"session_id", session.ID,
 				"container_id", session.ContainerID,
+				"error", err,
 			)
 		}
 
 		err = session.FileSystem.DeleteWorkspace()
 		if err != nil {
-			e.Logger.Error("Unable to delete fs workspace",
+			e.Logger.Error(
+				"Unable to delete fs workspace",
 				"session_id", session.ID,
+				"error", err,
 			)
 		}
 	}
