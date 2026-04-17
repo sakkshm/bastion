@@ -85,7 +85,19 @@ func (h *Handler) CreateNewSession(w http.ResponseWriter, r *http.Request) {
 		WSManager:   wsManager,
 		FileSystem:  filesystem,
 	}
-	h.Engine.Sessions.Add(&sess)
+	err = h.Engine.Sessions.Add(&sess)
+	if err != nil {
+		// rollback/delete container
+		_ = h.Engine.Docker.DeleteContainer(r.Context(), containerID)
+
+		h.Engine.Logger.Error(
+			"Failed to add session to SessionManager",
+			"session_id", sessionID,
+			"error", err,
+		)
+		writeJSONError(w, http.StatusInternalServerError, "Failed to create sandbox container")
+		return
+	}
 
 	// atatch a worker to this session to execute jobs
 	h.Engine.Logger.Info("Attaching workers to session", "session_id", sess.ID)
@@ -218,14 +230,16 @@ func (h *Handler) DeleteSessionHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.Engine.Sessions.UpdateStatus(sess.ID, session.StatusDeleted)
 	}
+
+	h.Engine.Sessions.UpdateStatus(sess.ID, session.StatusDeleted)
+	sess.Status = session.StatusDeleted
 
 	w.WriteHeader(http.StatusOK)
 
 	resp := DeleteSessionResponse{
 		SessionID: sess.ID,
-		Status:    session.StatusDeleted.String(),
+		Status:    sess.Status.String(),
 	}
 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
