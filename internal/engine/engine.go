@@ -81,7 +81,7 @@ func (e *Engine) Close() error {
 
 func (e Engine) HealthCheck() HealthCheck {
 	return HealthCheck{
-		DockerHealthy: e.Docker.HealthCheck(),
+		DockerHealthy:   e.Docker.HealthCheck(),
 		DatabaseHealthy: e.Database.HealthCheck(),
 	}
 }

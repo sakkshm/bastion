@@ -62,10 +62,7 @@ func RunBastion(configPath string) {
 	r := chi.NewRouter()
 
 	// Health endpoint (public)
-	r.Get(api.HealthEndpoint, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("OK"))
-	})
+	r.Get(api.HealthEndpoint, routeHandler.HealthCheckHandler)
 
 	// Create session (admin + agent)
 	r.With(auth.AuthMiddleware(auth.ScopeAdmin, auth.ScopeAgent)).

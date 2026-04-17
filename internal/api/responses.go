@@ -8,6 +8,12 @@ import (
 	"github.com/sakkshm/bastion/internal/filesystem"
 )
 
+type HealthCheckResponse struct {
+	DockerAlive bool
+	DBAlive     bool
+	APIAlive    bool
+}
+
 type CreateSessionResponse struct {
 	SessionID string    `json:"session_id"`
 	Status    string    `json:"status"`
