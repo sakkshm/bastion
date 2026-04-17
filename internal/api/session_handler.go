@@ -117,8 +117,8 @@ func (h *Handler) StartSessionHandler(w http.ResponseWriter, r *http.Request) {
 	// Update session data
 	h.Engine.Sessions.Touch(sess.ID)
 
-	// start container if not already running
-	if sess.Status != session.StatusRunning {
+	// start container only if its created or stopped
+	if sess.Status == session.StatusCreated || sess.Status == session.StatusStopped {
 		err := h.Engine.Docker.StartContainer(r.Context(), sess.ContainerID)
 		if err != nil {
 			h.Engine.Logger.Error(
@@ -162,8 +162,8 @@ func (h *Handler) StopSessionHandler(w http.ResponseWriter, r *http.Request) {
 	// Update session data
 	h.Engine.Sessions.Touch(sess.ID)
 
-	// stop if not already stopped
-	if sess.Status != session.StatusStopped {
+	// stop if not already stopped and not deleted
+	if sess.Status != session.StatusStopped && sess.Status != session.StatusDeleted {
 		err := h.Engine.Docker.StopContainer(r.Context(), sess.ContainerID)
 		if err != nil {
 			h.Engine.Logger.Error(

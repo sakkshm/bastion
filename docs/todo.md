@@ -5,7 +5,7 @@
 * ~~WS stream dies unexpectedly, its not working at all, it only disconnects when error in terminal~~
 * ~~Make API Token validation for WS~~
 * Ensure session state stays synced with actual container state
-* Ensure valid session status transitions only (no illegal state changes)
+* ~~Ensure valid session status transitions only (no illegal state changes)~~
 * Make session + container actions atomic and consistent
 * Improve resource cleanup (no leaks, no zombie processes/containers)
 * Container lifecycle cleanup after TTL / deletion (GC-like behavior)
