@@ -194,7 +194,7 @@ func (ws *WSManager) handleIncoming(msg WSMessage) {
 		if !ok {
 			return
 		}
-		client.WriteErrToClient(fmt.Errorf("inavlid msg type"))
+		client.WriteErrToClient(fmt.Errorf("invalid msg type"))
 	}
 }
 

@@ -33,6 +33,12 @@ func (e *Engine) cleanupSessions(ttl time.Duration) {
 	e.Sessions.BatchDelete(toDelete)
 
 	for _, session := range toDeleteSessions {
+
+		e.Logger.Warn(
+			"Deleting session for garbage collection",
+			"session_id", session.ID,
+		)
+
 		// kill all ws clients
 		session.WSManager.Cancel()
 
