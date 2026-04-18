@@ -409,6 +409,11 @@ func (h *Handler) ListFilesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// normalize all timestamps to UTC
+	for i := range fileDetails {
+		fileDetails[i].ModTime = fileDetails[i].ModTime.UTC()
+	}
+
 	sort.Slice(fileDetails, func(i, j int) bool {
 		return fileDetails[i].Name < fileDetails[j].Name
 	})
