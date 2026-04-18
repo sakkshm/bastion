@@ -215,7 +215,11 @@ paths:
                   type: string
                   format: binary
                 metadata:
-                  type: string
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    path:
+                      type: string
       responses:
         "200":
           description: File uploaded
@@ -252,7 +256,7 @@ paths:
           description: File not found
 
   /session/{id}/delete:
-    post:
+    delete:
       tags: [files]
       operationId: deleteFile
       summary: Delete file
@@ -451,13 +455,14 @@ components:
       properties:
         name:
           type: string
-        path:
-          type: string
         is_dir:
           type: boolean
         size:
           type: integer
-        modified_at:
+          format: int64
+        mode:
+          type: string
+        mod_time:
           type: string
           format: date-time
 
