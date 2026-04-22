@@ -1,9 +1,0 @@
-__pycache__
-bastion_py_sdk.egg-info
-
-build
-dist
-docs
-test
-
-venv
