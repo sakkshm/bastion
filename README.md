@@ -4,8 +4,11 @@
 
 Run commands, manage files, and execute code in a controlled environment **without risking your host machine**, via a simple REST + WebSocket API. 
 
-[`Get started  here.`](./docs/get-started.md)
-[`Python SDK`](https://pypi.org/project/bastion-py-sdk/)
+[Get started  here.](./docs/get-started.md)
+
+[Watch a Demo](https://www.youtube.com/watch?v=8Rbe5QddnnE)
+
+[Python SDK](https://pypi.org/project/bastion-py-sdk/)
  
 
 ## Why Bastion?
