@@ -1,5 +1,7 @@
 # Bastion API Reference
 
+You can either call the API or use the [Python SDK](./py-sdk-docs.md). 
+
 Base URL:
 
 ```text

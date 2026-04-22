@@ -225,7 +225,7 @@ curl -X POST http://localhost:8080/session/<id>/exec \
   -d '{"cmd": ["echo", "hello"]}'
 ```
 
-> [`See full API docs here.`](./docs/get-started.md)
+[`See full API docs here.`](./api-docs.md)
 
 ## 8. Notes
 
