@@ -1,6 +1,8 @@
 __pycache__
-bastion.egg-info
+bastion_py_sdk.egg-info
 
+build
+dist
 docs
 test
 

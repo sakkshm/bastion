@@ -165,10 +165,7 @@ class Jobs:
             if status["status"] in ("completed", "failed"):
 
                 if status["status"] == "failed":
-                    raise JobFailedError(
-                        job_id=job_id,
-                        output=status.get("output"),
-                    )
+                    raise JobFailedError(status.get("output"))
 
                 return status
 
@@ -247,10 +244,7 @@ class Jobs:
             if status["status"] in ("completed", "failed"):
 
                 if status["status"] == "failed":
-                    raise JobFailedError(
-                        job_id=job_id,
-                        output=status.get("output"),
-                    )
+                    raise JobFailedError(status.get("output"))
 
                 return status
 

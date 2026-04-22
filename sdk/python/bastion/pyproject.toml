@@ -1,7 +1,26 @@
-[project]
-name = "bastion"
-version = "0.1.0"
-
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "bastion-py-sdk"
+version = "1.0.0"
+description = "Python SDK for interacting with Bastion sandboxed execution runtime"
+authors = [
+  { name = "Saksham Saxena" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.8"
+
+dependencies = [
+  "urllib3>=2.0.0",
+  "pydantic>=2.0.0",
+  "websocket-client>=1.6.0",
+  "python-dateutil>=2.8.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/sakkshm/bastion"
+Repository = "https://github.com/sakkshm/bastion"
+Issues = "https://github.com/sakkshm/bastion/issues"
