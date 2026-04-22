@@ -5,3 +5,4 @@ app.db
 .env
 
 tests
+sessions

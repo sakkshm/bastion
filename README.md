@@ -1,69 +1,83 @@
 # Bastion
 
-**A self-hosted, safe terminal environment for AI agents and automation tools.**
+**A self-hosted, sandboxed execution environment for AI agents and automation tools to run untrusted code.**
 
-Run commands, manage files, and execute code in a controlled sandboxed environment **without risking your host machine**, accessible via a simple REST + WebSocket API.
+Run commands, manage files, and execute code in a controlled environment **without risking your host machine**, via a simple REST + WebSocket API. 
+
+> [`Get started  here.`](./docs/get-started.md)
+ 
 
 ## Why Bastion?
 
-AI models can write scripts and automate workflows, but running them directly on your system is risky. Bastion solves this by providing:
+Running AI-generated code locally is risky. Bastion provides:
 
-* **Sandboxed execution** — containers isolate AI processes from your host.
-* **Policy enforcement** — define allowed commands, file access, and network usage.
-* **Resource controls** — limit CPU, memory, and execution time.
-* **Live streaming** — watch stdout/stderr in real-time.
-* **Scoped file management** — safely upload, download, and organize files.
-* **Audit logging** — keep detailed execution history for debugging and reproducibility.
+* **Isolated execution** : containerized environments protect your host
+* **Policy + resource control** : restrict commands, filesystem, network, CPU, memory, and time
+* **Persistent workspaces** : long-lived environments instead of ephemeral jobs
+* **Concurrent execution** : multiple commands run in parallel
+* **Realtime interaction** : streaming output + interactive terminal (WebSocket)
+* **Safe file access** : scoped upload, download, and management
+* **Auditability** : structured logs with execution metadata
 
-Bastion is self-contained, lightweight, and designed to plug into AI workflows seamlessly.
+Lightweight, self-hosted, and built for AI-native workflows. 
 
-## How It Runs
+**Bastion** is not just a container runner, it’s a stateful execution layer for AI agents, with built-in safety, observability, and control.
 
-## Sandboxed
+ 
 
-* Each session runs in its own ephemeral Docker container.
-* CPU, memory, and network can be limited per session.
-* Comes pre-installed with Python, Node.js, git, build tools, data libraries, ffmpeg, and other common utilities.
-* Ideal for running AI agents safely without affecting the host system.
+## How It Works
 
-### Bare-Metal
+### Sandboxed Runtime
 
-* Runs directly on your machine.
-* Full access to system files and installed tools.
-* Suitable for personal automation, local development, or giving an AI full project access.
-* Explicit warnings are shown before execution for safety.
+* Each **session runs in an isolated Docker container**, providing strong separation from the host system 
+* **Custom Docker images supported**, allowing you to tailor environments (Python, Node, ML stacks, etc.) for specific workflows 
+* **Persistent + controlled runtime** : bind-mounted storage ensures files survive restarts, while CPU, memory, execution time, and network access are strictly governed per session 
+* **Policy-driven secure execution** : enforce resource and filesystem restrictions, enabling safe, concurrent execution of untrusted or AI-generated code without risking the host system 
+* Designed for **safe, concurrent execution of untrusted or AI-generated code** without risking your machine
 
-## Quick Start
+Designed for **safe, concurrent execution of untrusted or AI-generated code**.
 
-### Docker (Recommended)
+ 
 
-```bash
-docker run -d --name bastion \
-  -p 8000:8000 \
-  -v bastion-workspace:/workspace \
-  -e BASTION_API_KEY=your-key \
-  bastion/runtime
-```
+## Core Concepts
 
-Visit `http://localhost:8000`, your terminal is ready.
+* **Session** : Persistent, isolated container environment with its own filesystem (`created → running → stopped → deleted`)
+* **Jobs (Execution)** : Commands run via Docker `exec`; stateless, concurrent, async, with optional interactive TTY
+* **Terminal** : WebSocket-based interactive shell with real-time bidirectional I/O
+* **Filesystem** : Session-scoped, persistent storage with strict isolation (no path traversal)
+ 
 
-> Tip: If you don’t provide an API key, Bastion generates one automatically. Retrieve it with `docker logs bastion`.
+## Observability & Security
 
-### Bare-Metal
+* **Structured JSON logs** : command, output, duration, resource usage, policy decisions
+* **API key authentication** + role-based access (`admin`, `agent`, `viewer`)
+* **Container + filesystem isolation** with network restrictions
 
-```bash
-bastion run --host 0.0.0.0 --port 8000 --api-key your-key
-```
+ 
 
-> Caution: Bare-metal mode runs commands with your user permissions. Use Docker for safer execution.
+## Persistence & Recovery
 
-## Integrating With AI Agents
+* Session metadata stored in SQLite
+* Automatic reconciliation with Docker on restart
+* Handles orphan containers and state recovery
 
-Bastion is designed to be API-first. AI agents can:
+ 
 
-* Run commands via `POST /execute`
-* Stream output over `/ws/{session_id}`
-* Upload/download files in `/workspace`
-* Validate commands before execution with the policy simulation endpoint
+## Use Cases
 
-Integration can be **direct** (AI talks to your Bastion instance) or **proxied** (through a central server for multi-user setups).
+* AI agents code execution
+* Secure code interpreters
+* Dev sandboxes & automation pipelines
+* Research & data workflows
+* Multi-agent systems
+
+
+## Roadmap
+
+* Policy engine (TOML)
+* RBAC & multi-tenancy
+* Distributed + Kubernetes-native runtime
+* Session Replays & Agent tracing
+* Snapshotting & prebuilds
+* Container pooling
+* Advanced observability (OpenTelemetry)
